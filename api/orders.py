@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlmodel import Session, select, col
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
@@ -90,11 +90,32 @@ class POrderRead(BaseModel):
 # --- API 路由實作 ---
 
 @router.get("/", response_model=List[POrderRead])
-def read_orders(skip: int = 0, limit: int = 100, session: Session = Depends(get_session)):
+def read_orders(
+    order_no: Optional[str] = Query(None),
+    vendor_id: Optional[UUID] = Query(None),
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+    skip: int = 0, 
+    limit: int = 100, 
+    session: Session = Depends(get_session)
+):
     """
-    查詢所有訂單列表。
+    查詢訂單列表，支援多種篩選條件。
     """
-    return session.exec(select(POrder).offset(skip).limit(limit)).all()
+    statement = select(POrder)
+    if order_no:
+        statement = statement.where(col(POrder.order_no).contains(order_no))
+    if vendor_id:
+        statement = statement.where(POrder.vendor_id == vendor_id)
+    if start_date:
+        statement = statement.where(POrder.date_in >= start_date)
+    if end_date:
+        statement = statement.where(POrder.date_in <= end_date)
+    
+    # 按日期降冪排序 (最新的在前)
+    statement = statement.order_by(POrder.date_in.desc())
+    
+    return session.exec(statement.offset(skip).limit(limit)).all()
 
 @router.post("/", response_model=POrderRead, status_code=status.HTTP_201_CREATED)
 def create_order(order_in: POrderCreate, session: Session = Depends(get_session)):

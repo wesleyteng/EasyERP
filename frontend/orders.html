@@ -24,7 +24,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">選擇合作夥伴 (Vendor/Customer)</label>
-                    <select id="o_vendor_id" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                    <select id="o_vendor_id" required onchange="onPartnerChange(this.value)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition">
                         <option value="">-- 請選擇夥伴 --</option>
                     </select>
                 </div>
@@ -37,6 +37,35 @@
                     <label class="block text-sm font-semibold text-slate-700 mb-2">承辦人員 ID (UUID)</label>
                     <input type="text" id="o_user_id" required readonly
                         class="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 cursor-not-allowed">
+                </div>
+            </div>
+
+            <!-- 聯絡與送貨資訊 (新欄位) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 border-t pt-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">聯絡人</label>
+                    <input type="text" id="o_contact" placeholder="會自動帶入，亦可修改"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">聯絡電話</label>
+                    <input type="text" id="o_contact_tel" placeholder="會自動帶入，亦可修改"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">預計送貨日期</label>
+                    <input type="date" id="o_ship_date" 
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="md:col-span-2 lg:col-span-3">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">送貨地址</label>
+                    <input type="text" id="o_ship_address" placeholder="會自動帶入廠商通訊地址，亦可修改"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="md:col-span-2 lg:col-span-3">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">送貨備註</label>
+                    <textarea id="o_ship_note" rows="2" placeholder="請輸入送貨相關注意事項..."
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
                 </div>
             </div>
 
@@ -84,6 +113,38 @@
                 <i class="fas fa-sync mr-1"></i> 刷新列表
             </button>
         </div>
+
+        <!-- 篩選器介面 -->
+        <div class="p-6 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">訂單編號</label>
+                <input type="text" id="filter_order_no" placeholder="模糊搜尋..."
+                    class="w-full px-3 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">合作夥伴</label>
+                <select id="filter_vendor_id" class="w-full px-3 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">-- 全部 --</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">訂單日期範圍</label>
+                <div class="flex items-center space-x-2">
+                    <input type="date" id="filter_start_date" class="w-full px-2 py-2 border rounded-md text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+                    <span class="text-slate-400">~</span>
+                    <input type="date" id="filter_end_date" class="w-full px-2 py-2 border rounded-md text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="applyFilters()" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-md text-sm transition shadow-sm">
+                    <i class="fas fa-filter mr-1"></i> 執行篩選
+                </button>
+                <button onclick="resetFilters()" class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-2 px-4 rounded-md text-sm transition">
+                    重置
+                </button>
+            </div>
+        </div>
+
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200">
                 <thead class="bg-slate-50">
@@ -104,6 +165,22 @@
 
     <script>
         let cachedProducts = [];
+
+        // 當選擇合作夥伴時自動帶入預設值
+        async function onPartnerChange(partnerId) {
+            if (!partnerId) return;
+            try {
+                const res = await fetch(`/api/partners/${partnerId}`);
+                if (res.ok) {
+                    const partner = await res.json();
+                    document.getElementById('o_contact').value = partner.contact || '';
+                    document.getElementById('o_contact_tel').value = partner.contact_tel || '';
+                    document.getElementById('o_ship_address').value = partner.address || '';
+                }
+            } catch (e) {
+                console.error('Fetch Partner Error:', e);
+            }
+        }
 
         // 填寫用戶資訊
         function fillUserInfo() {
@@ -133,8 +210,12 @@
             const res = await fetch('/api/partners/');
             const partners = await res.json();
             const select = document.getElementById('o_vendor_id');
+            const filterSelect = document.getElementById('filter_vendor_id');
+            
             partners.forEach(p => {
-                select.innerHTML += `<option value="${p.id}">${p.name} (${p.erp_id})</option>`;
+                const optionHtml = `<option value="${p.id}">${p.name} (${p.erp_id})</option>`;
+                select.innerHTML += optionHtml;
+                filterSelect.innerHTML += optionHtml;
             });
         }
 
@@ -144,30 +225,64 @@
             cachedProducts = await res.json();
         }
 
-        // 取得歷史訂單
-        async function fetchOrders() {
-            const res = await fetch('/api/orders/');
-            const orders = await res.json();
+        // 取得歷史訂單 (支援篩選)
+        async function fetchOrders(queryParams = '') {
             const tbody = document.getElementById('order-history-body');
-            tbody.innerHTML = '';
-            
-            orders.forEach(o => {
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50">
-                        <td class="px-6 py-4">
-                            <a href="order_detail.html?id=${o.id}" class="font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
-                                ${o.order_no}
-                            </a>
-                        </td>
-                        <td class="px-6 py-4 text-slate-700">${o.vendor ? o.vendor.name : '未知'}</td>
-                        <td class="px-6 py-4 font-mono">$${o.total_price}</td>
-                        <td class="px-6 py-4 text-slate-500">${new Date(o.date_in).toLocaleDateString()}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs">已建立</span>
-                        </td>
-                    </tr>
-                `;
-            });
+            try {
+                const res = await fetch(`/api/orders/${queryParams}`);
+                const orders = await res.json();
+                tbody.innerHTML = '';
+                
+                if (orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">查無符合條件的訂單</td></tr>';
+                    return;
+                }
+
+                orders.forEach(o => {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4">
+                                <a href="order_detail.html?id=${o.id}" class="font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
+                                    ${o.order_no}
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 text-slate-700 font-medium">${o.vendor ? o.vendor.name : '未知'}</td>
+                            <td class="px-6 py-4 font-mono text-indigo-600 font-bold">$${o.total_price.toLocaleString()}</td>
+                            <td class="px-6 py-4 text-slate-500">${new Date(o.date_in).toLocaleString()}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold">已建立</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-red-500 font-bold">載入失敗</td></tr>';
+            }
+        }
+
+        // 執行篩選
+        function applyFilters() {
+            const orderNo = document.getElementById('filter_order_no').value;
+            const vendorId = document.getElementById('filter_vendor_id').value;
+            const startDate = document.getElementById('filter_start_date').value;
+            const endDate = document.getElementById('filter_end_date').value;
+
+            const params = new URLSearchParams();
+            if (orderNo) params.append('order_no', orderNo);
+            if (vendorId) params.append('vendor_id', vendorId);
+            if (startDate) params.append('start_date', startDate + 'T00:00:00');
+            if (endDate) params.append('end_date', endDate + 'T23:59:59');
+
+            fetchOrders('?' + params.toString());
+        }
+
+        // 重置篩選
+        function resetFilters() {
+            document.getElementById('filter_order_no').value = '';
+            document.getElementById('filter_vendor_id').value = '';
+            document.getElementById('filter_start_date').value = '';
+            document.getElementById('filter_end_date').value = '';
+            fetchOrders();
         }
 
         // 動態新增商品列
@@ -244,6 +359,11 @@
                 user_id: document.getElementById('o_user_id').value,
                 vendor_id: document.getElementById('o_vendor_id').value,
                 order_no: document.getElementById('o_no').value,
+                contact: document.getElementById('o_contact').value,
+                contact_tel: document.getElementById('o_contact_tel').value,
+                ship_address: document.getElementById('o_ship_address').value,
+                ship_note: document.getElementById('o_ship_note').value,
+                ship_date: document.getElementById('o_ship_date').value || null,
                 total_price: Math.round(updateGrandTotal()),
                 products: products
             };
