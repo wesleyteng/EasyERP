@@ -163,3 +163,45 @@ def get_order(id: UUID, session: Session = Depends(get_session)):
             detail="找不到該訂單"
         )
     return order
+
+@router.put("/{id}", response_model=POrderRead)
+def update_order(id: UUID, order_in: POrderCreate, session: Session = Depends(get_session)):
+    """
+    更新訂單 (PUT /orders/{id}): 更新主檔並替換所有明細。
+    """
+    db_order = session.get(POrder, id)
+    if not db_order:
+        raise HTTPException(status_code=404, detail="找不到該訂單")
+
+    # 1. 更新主檔欄位
+    update_data = order_in.dict(exclude={"products"})
+    for key, value in update_data.items():
+        setattr(db_order, key, value)
+    
+    try:
+        # 2. 刪除舊明細
+        old_products = session.exec(select(POrderProduct).where(POrderProduct.order_id == id)).all()
+        for old_p in old_products:
+            session.delete(old_p)
+        
+        # 3. 建立新明細
+        for p_in in order_in.products:
+            db_item = POrderProduct(
+                order_id=db_order.id,
+                product_id=p_in.product_id,
+                description=p_in.description,
+                amount=p_in.amount,
+                spec=p_in.spec,
+                unit=p_in.unit,
+                unit_price=p_in.unit_price,
+                total_price=p_in.total_price,
+                note=p_in.note
+            )
+            session.add(db_item)
+            
+        session.commit()
+        session.refresh(db_order)
+        return db_order
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=f"更新失敗: {str(e)}")

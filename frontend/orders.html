@@ -35,8 +35,8 @@
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">承辦人員 ID (UUID)</label>
-                    <input type="text" id="o_user_id" required value="00000000-0000-0000-0000-000000000000"
-                        class="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-500">
+                    <input type="text" id="o_user_id" required readonly
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 cursor-not-allowed">
                 </div>
             </div>
 
@@ -105,8 +105,25 @@
     <script>
         let cachedProducts = [];
 
+        // 填寫用戶資訊
+        function fillUserInfo() {
+            const userJson = localStorage.getItem('erp_user');
+            console.log('Current User from LocalStorage:', userJson);
+            if (userJson) {
+                const user = JSON.parse(userJson);
+                const userIdField = document.getElementById('o_user_id');
+                if (userIdField) {
+                    userIdField.value = user.id;
+                    console.log('Set User ID to:', user.id);
+                }
+            } else {
+                console.warn('No erp_user found in localStorage');
+            }
+        }
+
         // 初始化
         async function init() {
+            fillUserInfo();
             await Promise.all([fetchPartners(), fetchProducts(), fetchOrders()]);
             addProductRow(); // 預設新增一列
         }
@@ -137,7 +154,11 @@
             orders.forEach(o => {
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50">
-                        <td class="px-6 py-4 font-bold text-indigo-600">${o.order_no}</td>
+                        <td class="px-6 py-4">
+                            <a href="order_detail.html?id=${o.id}" class="font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
+                                ${o.order_no}
+                            </a>
+                        </td>
                         <td class="px-6 py-4 text-slate-700">${o.vendor ? o.vendor.name : '未知'}</td>
                         <td class="px-6 py-4 font-mono">$${o.total_price}</td>
                         <td class="px-6 py-4 text-slate-500">${new Date(o.date_in).toLocaleDateString()}</td>
@@ -237,6 +258,7 @@
                 if (res.ok) {
                     alert('✅ 訂單建立成功！');
                     document.getElementById('order-form').reset();
+                    fillUserInfo(); // 重設表單後重新填入用戶資訊
                     document.getElementById('product-rows').innerHTML = '';
                     addProductRow();
                     fetchOrders();

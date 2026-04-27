@@ -25,32 +25,32 @@
         </div>
         
         <nav class="mt-4 flex-grow">
-            <ul class="space-y-1">
-                <li>
+            <ul id="menu-list" class="space-y-1">
+                <li data-role="11">
                     <a href="javascript:void(0)" onclick="loadPage('partners.html', this)" class="sidebar-link active flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
                         <i class="fas fa-users w-6"></i>
                         <span class="ml-3">合作夥伴管理</span>
                     </a>
                 </li>
-                <li>
+                <li data-role="11">
                     <a href="javascript:void(0)" onclick="loadPage('productmgt.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
                         <i class="fas fa-box w-6"></i>
                         <span class="ml-3">商品管理</span>
                     </a>
                 </li>
-                <li>
+                <li data-role="22">
                     <a href="javascript:void(0)" onclick="loadPage('inventory.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
                         <i class="fas fa-boxes w-6"></i>
                         <span class="ml-3">庫存異動作業</span>
                     </a>
                 </li>
-                <li>
+                <li data-role="22">
                     <a href="javascript:void(0)" onclick="loadPage('orders.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
                         <i class="fas fa-file-invoice-dollar w-6"></i>
                         <span class="ml-3">訂單作業</span>
                     </a>
                 </li>
-                <li>
+                <li data-role="00">
                     <a href="javascript:void(0)" onclick="loadPage('accounts.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
                         <i class="fas fa-user-shield w-6"></i>
                         <span class="ml-3">權限管理</span>
@@ -59,7 +59,13 @@
             </ul>
         </nav>
 
-        <div class="p-6 text-xs text-indigo-400 border-t border-indigo-800">
+        <div class="p-4 border-t border-indigo-800">
+            <button onclick="logout()" class="w-full flex items-center justify-center px-4 py-2 bg-rose-600 hover:bg-rose-700 rounded-lg text-sm transition">
+                <i class="fas fa-sign-out-alt mr-2"></i> 登出系統
+            </button>
+        </div>
+
+        <div class="p-6 text-xs text-indigo-400 border-t border-indigo-800 text-center">
             &copy; 2024 EasyERP Version 0.1.0
         </div>
     </aside>
@@ -68,41 +74,82 @@
     <main class="flex-grow flex flex-col min-w-0 overflow-hidden">
         <!-- 頂部資訊列 Header -->
         <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm">
-            <h2 id="page-title" class="text-xl font-semibold text-slate-800">合作夥伴管理</h2>
+            <h2 id="page-title" class="text-xl font-semibold text-slate-800">首頁</h2>
             <div class="flex items-center space-x-4">
-                <span class="text-sm text-slate-500">系統管理員</span>
-                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                    A
+                <div class="text-right">
+                    <div id="user-name" class="text-sm font-bold text-slate-700">載入中...</div>
+                    <div id="user-role" class="text-xs text-slate-500">角色</div>
+                </div>
+                <div id="user-avatar" class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shadow-inner">
+                    ?
                 </div>
             </div>
         </header>
 
         <!-- 內容容器 Content Container -->
         <section class="flex-grow p-0 overflow-hidden relative">
-            <iframe id="content-frame" src="partners.html" class="w-full h-full border-none"></iframe>
+            <iframe id="content-frame" src="" class="w-full h-full border-none"></iframe>
         </section>
     </main>
 
     <script>
+        // 1. 登入檢查與權限過濾
+        const userJson = localStorage.getItem('erp_user');
+        if (!userJson) {
+            window.location.href = 'login.html';
+        }
+        const user = JSON.parse(userJson);
+
+        // 更新 Header 資訊
+        document.getElementById('user-name').innerText = user.name;
+        document.getElementById('user-avatar').innerText = user.name.charAt(0);
+        
+        const rolesMap = { '00': '管理者', '11': '經理', '22': '一般用戶' };
+        document.getElementById('user-role').innerText = rolesMap[user.role_id_list] || '未知角色';
+
+        // 權限過濾邏輯
+        const menuItems = document.querySelectorAll('#menu-list li');
+        let firstAvailable = null;
+
+        menuItems.forEach(li => {
+            const requiredRole = li.getAttribute('data-role');
+            let hasAccess = false;
+
+            if (user.role_id_list === '00') {
+                hasAccess = true; // 管理者全開
+            } else if (user.role_id_list === '11') {
+                hasAccess = (requiredRole !== '00'); // 經理除了權限管理外都開
+            } else if (user.role_id_list === '22') {
+                hasAccess = (requiredRole === '22'); // 一般用戶只開 22
+            }
+
+            if (!hasAccess) {
+                li.remove();
+            } else {
+                if (!firstAvailable) firstAvailable = li.querySelector('a');
+            }
+        });
+
+        // 預設載入第一個可用頁面
+        if (firstAvailable) {
+            firstAvailable.click();
+        }
+
         /**
          * 切換頁面邏輯
-         * @param {string} url - 要載入的 HTML 檔案路徑
-         * @param {HTMLElement} element - 點擊的連結元素
          */
         function loadPage(url, element) {
-            // 1. 更新 iframe 來源
             const frame = document.getElementById('content-frame');
             frame.src = url;
-
-            // 2. 更新標題
             const title = element.querySelector('span').innerText;
             document.getElementById('page-title').innerText = title;
-
-            // 3. 更新側邊欄樣式
-            document.querySelectorAll('.sidebar-link').forEach(link => {
-                link.classList.remove('active');
-            });
+            document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
             element.classList.add('active');
+        }
+
+        function logout() {
+            localStorage.removeItem('erp_user');
+            window.location.href = 'login.html';
         }
     </script>
 </body>

@@ -75,6 +75,25 @@ def update_account(id: UUID, account_in: AccountUpdate, session: Session = Depen
     session.refresh(db_account)
     return db_account
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@router.post("/login")
+def login(data: LoginRequest, session: Session = Depends(get_session)):
+    user = session.exec(select(BackendAccount).where(BackendAccount.username == data.username)).first()
+    if not user or user.password != data.password:
+        raise HTTPException(status_code=401, detail="帳號或密碼錯誤")
+    if not user.status:
+        raise HTTPException(status_code=403, detail="此帳號已被停用")
+    
+    return {
+        "id": str(user.id),
+        "username": user.username,
+        "name": user.name,
+        "role_id_list": user.role_id_list
+    }
+
 @router.patch("/reset-password/{id}")
 def reset_password(id: UUID, data: PasswordReset, session: Session = Depends(get_session)):
     db_account = session.get(BackendAccount, id)

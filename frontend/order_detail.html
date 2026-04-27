@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>訂單明細內容與修改</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="p-8 bg-slate-50 min-h-screen">
+
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">訂單明細內容與修改</h1>
+            <p class="text-slate-500 text-sm">檢視或更新現有訂單資訊</p>
+        </div>
+        <button onclick="window.history.back()" class="text-slate-600 hover:text-indigo-600 font-medium">
+            <i class="fas fa-arrow-left mr-2"></i>返回列表
+        </button>
+    </div>
+
+    <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 mb-10">
+        <h2 class="text-xl font-bold text-slate-700 mb-6 flex items-center border-b pb-4">
+            <i class="fas fa-edit mr-3 text-indigo-500"></i>編輯訂單 (Edit Order)
+        </h2>
+        
+        <form id="order-form" class="space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">合作夥伴</label>
+                    <select id="o_vendor_id" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="">-- 請選擇夥伴 --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">訂單編號</label>
+                    <input type="text" id="o_no" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">承辦人員 ID</label>
+                    <input type="text" id="o_user_id" readonly class="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 cursor-not-allowed">
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-700">訂單明細 (Products)</h3>
+                    <button type="button" onclick="addProductRow()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition">
+                        <i class="fas fa-plus mr-2"></i>新增商品
+                    </button>
+                </div>
+                
+                <table class="w-full border-collapse">
+                    <thead class="text-slate-500 text-xs uppercase text-left">
+                        <tr>
+                            <th class="pb-2 px-2">商品項目</th>
+                            <th class="pb-2 px-2 w-24">數量</th>
+                            <th class="pb-2 px-2 w-32">單價</th>
+                            <th class="pb-2 px-2 w-16">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="product-rows"></tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-between items-center pt-4">
+                <div class="text-right">
+                    <span class="text-slate-500 mr-4">總金額:</span>
+                    <span id="grand-total" class="text-2xl font-bold text-indigo-600">$0</span>
+                </div>
+                <div class="space-x-4">
+                    <button type="button" onclick="window.history.back()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-8 py-3 rounded-xl font-bold shadow transition">
+                        取消修改
+                    </button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-bold shadow-lg transition transform hover:-translate-y-0.5">
+                        儲存變更
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('id');
+        let cachedProducts = [];
+
+        async function init() {
+            if (!orderId) {
+                alert('無效的訂單 ID');
+                window.history.back();
+                return;
+            }
+            await Promise.all([fetchPartners(), fetchProducts()]);
+            await fetchOrderDetail();
+        }
+
+        async function fetchPartners() {
+            const res = await fetch('/api/partners/');
+            const partners = await res.json();
+            const select = document.getElementById('o_vendor_id');
+            partners.forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.name} (${p.erp_id})</option>`;
+            });
+        }
+
+        async function fetchProducts() {
+            const res = await fetch('/api/inventory/products/');
+            cachedProducts = await res.json();
+        }
+
+        async function fetchOrderDetail() {
+            try {
+                const res = await fetch(`/api/orders/${orderId}`);
+                if (!res.ok) throw new Error('無法取得訂單內容');
+                const order = await res.json();
+
+                document.getElementById('o_vendor_id').value = order.vendor_id;
+                document.getElementById('o_no').value = order.order_no;
+                document.getElementById('o_user_id').value = order.user_id;
+
+                const tbody = document.getElementById('product-rows');
+                tbody.innerHTML = '';
+                order.products.forEach(p => {
+                    addProductRow(p.product_id, p.amount, p.unit_price);
+                });
+                updateGrandTotal();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function addProductRow(productId = '', amount = 1, unitPrice = 0) {
+            const tbody = document.getElementById('product-rows');
+            const row = document.createElement('tr');
+            row.className = "border-b border-slate-100 last:border-0";
+            
+            let options = cachedProducts.map(p => `<option value="${p.id}" data-price="${p.sales_price}" ${p.id == productId ? 'selected' : ''}>${p.name} ($${p.sales_price})</option>`).join('');
+            
+            row.innerHTML = `
+                <td class="py-3 px-2">
+                    <select required class="item-select w-full px-3 py-2 border rounded text-sm outline-none">
+                        <option value="">-- 選擇商品 --</option>
+                        ${options}
+                    </select>
+                </td>
+                <td class="py-3 px-2">
+                    <input type="number" required min="1" value="${amount}" class="item-qty w-full px-3 py-2 border rounded text-sm outline-none">
+                </td>
+                <td class="py-3 px-2">
+                    <input type="number" step="0.01" value="${unitPrice}" class="item-price w-full px-3 py-2 border rounded bg-slate-50 text-slate-500 text-sm" readonly>
+                </td>
+                <td class="py-3 px-2 text-center">
+                    <button type="button" onclick="this.closest('tr').remove(); updateGrandTotal();" class="text-red-400 hover:text-red-600 transition">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            tbody.appendChild(row);
+
+            const select = row.querySelector('.item-select');
+            const priceInput = row.querySelector('.item-price');
+            select.onchange = () => {
+                const selectedOption = select.options[select.selectedIndex];
+                priceInput.value = selectedOption.dataset.price || 0;
+                updateGrandTotal();
+            };
+            row.querySelector('.item-qty').oninput = updateGrandTotal;
+        }
+
+        function updateGrandTotal() {
+            let total = 0;
+            document.querySelectorAll('#product-rows tr').forEach(row => {
+                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const price = parseFloat(row.querySelector('.item-price').value) || 0;
+                total += qty * price;
+            });
+            document.getElementById('grand-total').innerText = `$${total.toLocaleString()}`;
+            return total;
+        }
+
+        document.getElementById('order-form').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const products = [];
+            document.querySelectorAll('#product-rows tr').forEach(row => {
+                const pid = row.querySelector('.item-select').value;
+                if(pid) {
+                    products.push({
+                        product_id: parseInt(pid),
+                        amount: parseFloat(row.querySelector('.item-qty').value),
+                        unit_price: parseFloat(row.querySelector('.item-price').value),
+                        total_price: parseFloat(row.querySelector('.item-qty').value) * parseFloat(row.querySelector('.item-price').value)
+                    });
+                }
+            });
+
+            const payload = {
+                user_id: document.getElementById('o_user_id').value,
+                vendor_id: document.getElementById('o_vendor_id').value,
+                order_no: document.getElementById('o_no').value,
+                total_price: Math.round(updateGrandTotal()),
+                products: products
+            };
+
+            try {
+                const res = await fetch(`/api/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert('✅ 訂單修改成功！');
+                    window.location.href = 'orders.html';
+                } else {
+                    const err = await res.json();
+                    alert(`❌ 失敗: ${JSON.stringify(err.detail)}`);
+                }
+            } catch (e) { alert('❌ 連線錯誤'); }
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>
