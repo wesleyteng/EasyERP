@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="p-8 bg-slate-50 min-h-screen">
+
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-slate-800">權限與帳號管理</h1>
+        <p class="text-slate-500 text-sm">管理系統登入帳號及其存取權限</p>
+    </div>
+
+    <!-- 1. 新增帳號表單 -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8 max-w-4xl">
+        <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center">
+            <i class="fas fa-user-plus mr-2 text-indigo-500"></i>建立後台帳號
+        </h2>
+        <form id="account-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">登入帳號 (Username)</label>
+                <input type="text" id="username" required placeholder="例如：admin"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">登入密碼 (Password)</label>
+                <input type="password" id="password" required placeholder="********"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">顯示名稱 (Name)</label>
+                <input type="text" id="name" required placeholder="例如：王小明"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">角色權限</label>
+                <select id="role_id_list" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                    <option value="22">一般用戶 (22)</option>
+                    <option value="11">經理 (11)</option>
+                    <option value="00">管理者 (00)</option>
+                </select>
+            </div>
+            <div class="lg:col-span-4 flex justify-end">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md font-medium shadow-sm transition">
+                    確認新增帳號
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 2. 帳號列表 -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-slate-700">帳號列表</h2>
+            <button onclick="fetchAccounts()" class="text-indigo-600 hover:text-indigo-800 text-sm">
+                <i class="fas fa-sync-alt mr-1"></i> 重新整理
+            </button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-50 text-slate-500">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-semibold uppercase">帳號</th>
+                        <th class="px-6 py-3 text-left font-semibold uppercase">姓名</th>
+                        <th class="px-6 py-3 text-left font-semibold uppercase">角色權限</th>
+                        <th class="px-6 py-3 text-left font-semibold uppercase">建立時間</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase">狀態</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="account-table-body" class="divide-y divide-slate-200">
+                    <!-- 資料載入中 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 使用相對路徑，確保與 main.py 的掛載點匹配
+        const API_BASE = '/api/accounts'; 
+
+        // 取得所有帳號
+        async function fetchAccounts() {
+            const tbody = document.getElementById('account-table-body');
+            try {
+                const res = await fetch(`${API_BASE}/`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+
+                data.forEach(acc => {
+                    const statusBadge = acc.status 
+                        ? '<span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs">啟用中</span>' 
+                        : '<span class="px-2 py-1 bg-slate-100 text-slate-500 rounded-full text-xs">已停用</span>';
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4 font-mono font-bold text-indigo-600">${acc.username}</td>
+                            <td class="px-6 py-4 text-slate-900">${acc.name}</td>
+                            <td class="px-6 py-4 text-slate-500 font-xs italic">${acc.role_id_list || '無'}</td>
+                            <td class="px-6 py-4 text-slate-400">${new Date(acc.date_in).toLocaleString()}</td>
+                            <td class="px-6 py-4 text-center">${statusBadge}</td>
+                            <td class="px-6 py-4 text-center space-x-2">
+                                <button onclick="toggleStatus('${acc.id}', ${acc.status})" class="text-xs ${acc.status ? 'text-rose-600' : 'text-emerald-600'} hover:underline font-bold">
+                                    ${acc.status ? '停用' : '啟用'}
+                                </button>
+                                <button onclick="updateRole('${acc.id}', '${acc.role_id_list}')" class="text-xs text-indigo-600 hover:underline font-bold">
+                                    權限
+                                </button>
+                                <button onclick="resetPassword('${acc.id}')" class="text-xs text-slate-500 hover:underline font-bold">
+                                    密碼
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                console.error('Fetch Accounts Error:', e);
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500 font-bold">載入失敗: ${e.message}</td></tr>`;
+            }
+        }
+
+        // 重設密碼
+        async function resetPassword(id) {
+            const newPassword = prompt('請輸入新密碼：');
+            if (!newPassword) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/reset-password/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_password: newPassword })
+                });
+                if (res.ok) {
+                    alert('✅ 密碼已成功重設！');
+                } else {
+                    const err = await res.json();
+                    alert(`❌ 重設失敗: ${err.detail}`);
+                }
+            } catch (e) {
+                console.error('Reset Password Error:', e);
+                alert('系統連線失敗');
+            }
+        }
+
+        // 修改角色權限
+        async function updateRole(id, currentRole) {
+            const newRole = prompt('請輸入新的角色 ID (00: 管理者, 11: 經理, 22: 一般用戶)：', currentRole);
+            if (newRole === null || newRole === currentRole) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role_id_list: newRole })
+                });
+                if (res.ok) {
+                    alert('✅ 權限已成功更新！');
+                    await fetchAccounts();
+                } else {
+                    const err = await res.json();
+                    alert(`❌ 更新失敗: ${err.detail}`);
+                }
+            } catch (e) {
+                console.error('Update Role Error:', e);
+                alert('系統連線失敗');
+            }
+        }
+
+        // 切換狀態
+        async function toggleStatus(id, currentStatus) {
+            try {
+                const res = await fetch(`${API_BASE}/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: !currentStatus })
+                });
+                if (res.ok) {
+                    await fetchAccounts();
+                } else {
+                    const err = await res.json();
+                    alert(`更新失敗: ${err.detail}`);
+                }
+            } catch (e) { 
+                console.error('Toggle Status Error:', e);
+                alert('連線異常，請檢查控制台');
+            }
+        }
+
+        // 新增帳號
+        document.getElementById('account-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const payload = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                name: document.getElementById('name').value,
+                role_id_list: document.getElementById('role_id_list').value
+            };
+
+            console.log('Sending Payload:', payload);
+
+            try {
+                // 確保結尾有斜線，或是依照 FastAPI 定義的路徑
+                const res = await fetch(`${API_BASE}/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert('✅ 帳號建立成功！');
+                    document.getElementById('account-form').reset();
+                    await fetchAccounts();
+                } else {
+                    const err = await res.json();
+                    alert(`❌ 失敗: ${err.detail || '格式錯誤'}`);
+                    console.error('API Error Response:', err);
+                }
+            } catch (e) { 
+                alert('❌ 系統連線失敗，請按 F12 查看 Console 具體錯誤'); 
+                console.error('Fetch Exception:', e);
+            }
+        };
+
+        window.onload = fetchAccounts;
+    </script>
+</body>
+</html>

@@ -48,7 +48,6 @@ class Partner(SQLModel, table=True):
 # 財務單據 (應收/應付)
 class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    # 【修正】配合 Partner 的 UUID 型別
     partner_id: uuid.UUID = Field(foreign_key="partner.id")
     type: InvoiceType
     total_amount: float
@@ -85,7 +84,7 @@ class Product(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     product_no: Optional[str] = Field(default=None, max_length=50)
     erp_id: Optional[str] = Field(default=None, max_length=50)
-    catalog: Optional[int] = Field(default=None)
+    catalog: Optional[int] = None
     name: Optional[str] = Field(default=None, max_length=50)
     short_name: Optional[str] = Field(default=None, max_length=50)
     unit: Optional[str] = Field(default=None, max_length=50)
@@ -103,20 +102,20 @@ class Product(SQLModel, table=True):
 
 # 訂單流水號設定檔
 class POrderNumber(SQLModel, table=True):
-    pre_position: str = Field(primary_key=True, max_length=15, description="流水號前綴 (如: ORD202405)")
+    pre_position: str = Field(primary_key=True, max_length=15)
     count: int = Field(description="目前流水號計數")
 
 # 訂單主檔
 class POrder(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     project_id: Optional[uuid.UUID] = Field(default=None)
-    user_id: uuid.UUID = Field(nullable=False, description="建立者/承辦人ID")
-    vendor_id: uuid.UUID = Field(foreign_key="partner.id", nullable=False, description="對應廠商/客戶")
+    user_id: uuid.UUID = Field(nullable=False)
+    vendor_id: uuid.UUID = Field(foreign_key="partner.id", nullable=False)
     erp_id: Optional[str] = Field(default=None, max_length=50)
-    order_no: str = Field(max_length=20, nullable=False, description="訂單編號")
+    order_no: str = Field(max_length=20, nullable=False)
     type: int = Field(default=0)
     comp: int = Field(default=0)
-    total_price: int = Field(default=0, description="訂單總金額") # 依據圖表維持 int，若需小數可改 Decimal
+    total_price: int = Field(default=0)
     contact: Optional[str] = Field(default=None, max_length=50)
     contact_tel: Optional[str] = Field(default=None, max_length=50)
     ship_address: Optional[str] = Field(default=None, max_length=300)
@@ -126,25 +125,23 @@ class POrder(SQLModel, table=True):
     status: bool = Field(default=True)
     ship_date: Optional[datetime] = Field(default=None)
 
-    # 關聯
     vendor: Optional[Partner] = Relationship(back_populates="orders")
     products: List["POrderProduct"] = Relationship(back_populates="order", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     status_history: List["POrderStatus"] = Relationship(back_populates="order", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
-# 訂單明細 (商品項)
+# 訂單明細
 class POrderProduct(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     order_id: uuid.UUID = Field(foreign_key="porder.id", nullable=False)
     product_id: int = Field(foreign_key="product.id", nullable=False)
     description: Optional[str] = Field(default=None, max_length=300)
-    amount: Decimal = Field(default=0, max_digits=18, decimal_places=2, description="數量")
+    amount: Decimal = Field(default=0, max_digits=18, decimal_places=2)
     spec: Optional[str] = Field(default=None, max_length=200)
     unit: Optional[str] = Field(default=None, max_length=50)
     unit_price: Optional[Decimal] = Field(default=None, max_digits=18, decimal_places=2)
     total_price: Optional[Decimal] = Field(default=None, max_digits=18, decimal_places=2)
     note: Optional[str] = Field(default=None, max_length=1000)
 
-    # 關聯
     order: Optional[POrder] = Relationship(back_populates="products")
     product: Optional[Product] = Relationship()
 
@@ -152,9 +149,22 @@ class POrderProduct(SQLModel, table=True):
 class POrderStatus(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     order_id: uuid.UUID = Field(foreign_key="porder.id", nullable=False)
-    user_id: uuid.UUID = Field(nullable=False, description="操作者ID")
-    status: int = Field(nullable=False, description="狀態代碼")
+    user_id: uuid.UUID = Field(nullable=False)
+    status: int = Field(nullable=False)
     date_in: datetime = Field(default_factory=datetime.now)
 
-    # 關聯
+    # 之前遺漏的關鍵關聯！
     order: Optional[POrder] = Relationship(back_populates="status_history")
+
+
+# --- 4. 權限管理模組資料表模型 ---
+
+# 後台帳號
+class BackendAccount(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True, nullable=False)
+    username: str = Field(max_length=100, index=True, nullable=False)
+    password: str = Field(max_length=100, nullable=False)
+    name: str = Field(max_length=50, nullable=False)
+    role_id_list: Optional[str] = Field(default=None, max_length=100)
+    status: bool = Field(default=True)
+    date_in: datetime = Field(default_factory=datetime.now)
