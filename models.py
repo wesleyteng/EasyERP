@@ -1,7 +1,10 @@
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
+from decimal import Decimal
+import uuid
 from enum import Enum
+
 
 # --- 1. 定義列舉型別 (Enums) ---
 class PartnerType(str, Enum):
@@ -16,51 +19,142 @@ class TransactionType(str, Enum):
     inbound = "in"   # 進貨/入庫
     outbound = "out" # 出貨/出庫
 
-# --- 2. 定義資料表模型 ---
+
+# --- 2. 原有基礎資料表模型 ---
 
 # 合作夥伴 (客戶/供應商)
 class Partner(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
-    type: PartnerType
-    contact_info: Optional[str] = None
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True, nullable=False)
+    type: int = Field(default=0, description="廠商類型")
+    name: Optional[str] = Field(default=None, max_length=200)
+    serial_no: Optional[str] = Field(default=None, max_length=8)
+    erp_id: str = Field(max_length=50, nullable=False)
+    contact: Optional[str] = Field(default=None, max_length=50)
+    contact_tel: Optional[str] = Field(default=None, max_length=50)
+    tel: Optional[str] = Field(default=None, max_length=50)
+    fax: Optional[str] = Field(default=None, max_length=50)
+    zip: Optional[str] = Field(default=None, max_length=10)
+    address: Optional[str] = Field(default=None, max_length=500)
+    boss: Optional[str] = Field(default=None, max_length=50)
+    invoice_address: Optional[str] = Field(default=None, max_length=300)
+    invoice_zip: Optional[str] = Field(default=None, max_length=10)
+    payment_tel: Optional[str] = Field(default=None, max_length=50)
+    status: bool = Field(default=True)
+    date_in: datetime = Field(default_factory=datetime.now)
 
-    # 關聯：一個夥伴可以有多張單據
     invoices: List["Invoice"] = Relationship(back_populates="partner")
-
-# 庫存品項
-class InventoryItem(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    sku: str = Field(unique=True, index=True) # 產品編號
-    name: str
-    current_stock: int = Field(default=0)     # 目前庫存量
-    unit_price: float = Field(default=0.0)    # 單價
-
-    # 關聯：一個品項可以有多筆進出貨異動
-    transactions: List["Transaction"] = Relationship(back_populates="item")
+    orders: List["POrder"] = Relationship(back_populates="vendor")
 
 # 財務單據 (應收/應付)
 class Invoice(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    partner_id: int = Field(foreign_key="partner.id")
+    # 【修正】配合 Partner 的 UUID 型別
+    partner_id: uuid.UUID = Field(foreign_key="partner.id")
     type: InvoiceType
     total_amount: float
-    invoice_date: datetime = Field(default_factory=datetime.utcnow)
-    is_paid: bool = Field(default=False) # 是否已沖銷/結清
+    invoice_date: datetime = Field(default_factory=datetime.now)
+    is_paid: bool = Field(default=False)
 
-    # 關聯
     partner: Optional[Partner] = Relationship(back_populates="invoices")
     transactions: List["Transaction"] = Relationship(back_populates="invoice")
 
-# 庫存異動明細 (進出貨紀錄)
+# 庫存品項
+class InventoryItem(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    sku: str = Field(unique=True, index=True)
+    name: str
+    current_stock: int = Field(default=0)
+    unit_price: float = Field(default=0.0)
+
+    transactions: List["Transaction"] = Relationship(back_populates="item")
+
+# 庫存異動明細
 class Transaction(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     item_id: int = Field(foreign_key="inventoryitem.id")
     invoice_id: Optional[int] = Field(default=None, foreign_key="invoice.id")
     type: TransactionType
-    quantity: int # 異動數量
-    transaction_date: datetime = Field(default_factory=datetime.utcnow)
+    quantity: int
+    transaction_date: datetime = Field(default_factory=datetime.now)
 
-    # 關聯
     item: Optional[InventoryItem] = Relationship(back_populates="transactions")
     invoice: Optional[Invoice] = Relationship(back_populates="transactions")
+
+# 商品主檔
+class Product(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    product_no: Optional[str] = Field(default=None, max_length=50)
+    erp_id: Optional[str] = Field(default=None, max_length=50)
+    catalog: Optional[int] = Field(default=None)
+    name: Optional[str] = Field(default=None, max_length=50)
+    short_name: Optional[str] = Field(default=None, max_length=50)
+    unit: Optional[str] = Field(default=None, max_length=50)
+    show_price: Decimal = Field(default=0, max_digits=18, decimal_places=2)
+    sales_price: Decimal = Field(default=0, max_digits=18, decimal_places=2)
+    bottom_price: Decimal = Field(default=0, max_digits=18, decimal_places=2)
+    cost: Decimal = Field(default=0, max_digits=18, decimal_places=2)
+    is_green: bool = Field(default=True)
+    on_shelf: bool = Field(default=True)
+    status: bool = Field(default=True)
+    date_in: Optional[datetime] = Field(default_factory=datetime.now)
+
+
+# --- 3. 新增訂單模組資料表模型 ---
+
+# 訂單流水號設定檔
+class POrderNumber(SQLModel, table=True):
+    pre_position: str = Field(primary_key=True, max_length=15, description="流水號前綴 (如: ORD202405)")
+    count: int = Field(description="目前流水號計數")
+
+# 訂單主檔
+class POrder(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
+    project_id: Optional[uuid.UUID] = Field(default=None)
+    user_id: uuid.UUID = Field(nullable=False, description="建立者/承辦人ID")
+    vendor_id: uuid.UUID = Field(foreign_key="partner.id", nullable=False, description="對應廠商/客戶")
+    erp_id: Optional[str] = Field(default=None, max_length=50)
+    order_no: str = Field(max_length=20, nullable=False, description="訂單編號")
+    type: int = Field(default=0)
+    comp: int = Field(default=0)
+    total_price: int = Field(default=0, description="訂單總金額") # 依據圖表維持 int，若需小數可改 Decimal
+    contact: Optional[str] = Field(default=None, max_length=50)
+    contact_tel: Optional[str] = Field(default=None, max_length=50)
+    ship_address: Optional[str] = Field(default=None, max_length=300)
+    ship_note: Optional[str] = Field(default=None, max_length=500)
+    date_in: datetime = Field(default_factory=datetime.now)
+    update_time: datetime = Field(default_factory=datetime.now)
+    status: bool = Field(default=True)
+    ship_date: Optional[datetime] = Field(default=None)
+
+    # 關聯
+    vendor: Optional[Partner] = Relationship(back_populates="orders")
+    products: List["POrderProduct"] = Relationship(back_populates="order", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    status_history: List["POrderStatus"] = Relationship(back_populates="order", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+# 訂單明細 (商品項)
+class POrderProduct(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    order_id: uuid.UUID = Field(foreign_key="porder.id", nullable=False)
+    product_id: int = Field(foreign_key="product.id", nullable=False)
+    description: Optional[str] = Field(default=None, max_length=300)
+    amount: Decimal = Field(default=0, max_digits=18, decimal_places=2, description="數量")
+    spec: Optional[str] = Field(default=None, max_length=200)
+    unit: Optional[str] = Field(default=None, max_length=50)
+    unit_price: Optional[Decimal] = Field(default=None, max_digits=18, decimal_places=2)
+    total_price: Optional[Decimal] = Field(default=None, max_digits=18, decimal_places=2)
+    note: Optional[str] = Field(default=None, max_length=1000)
+
+    # 關聯
+    order: Optional[POrder] = Relationship(back_populates="products")
+    product: Optional[Product] = Relationship()
+
+# 訂單狀態歷程
+class POrderStatus(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    order_id: uuid.UUID = Field(foreign_key="porder.id", nullable=False)
+    user_id: uuid.UUID = Field(nullable=False, description="操作者ID")
+    status: int = Field(nullable=False, description="狀態代碼")
+    date_in: datetime = Field(default_factory=datetime.now)
+
+    # 關聯
+    order: Optional[POrder] = Relationship(back_populates="status_history")

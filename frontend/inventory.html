@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow-x: hidden; overflow-y: visible !important; }
+    </style>
+</head>
+<body class="p-8 bg-slate-50 min-h-screen">
+
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-slate-800">庫存與商品管理</h1>
+        <p class="text-slate-500 text-sm">維護商品主檔並處理即時進出貨異動</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- 1. 新增/修改商品表單 -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h2 id="form-title" class="text-lg font-semibold text-slate-700 mb-4 flex items-center">
+                <i class="fas fa-box-open mr-2 text-indigo-500"></i>新增商品主檔
+            </h2>
+            <form id="product-form" class="space-y-4">
+                <input type="hidden" id="p_id"> <!-- 用於編輯時儲存 ID -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">SKU / 編號</label>
+                        <input type="text" id="p_sku" required placeholder="例如：ITEM-001"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">商品名稱</label>
+                        <input type="text" id="p_name" required placeholder="例如：無線滑鼠"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">銷售單價</label>
+                        <input type="number" id="p_price" required step="0.01" placeholder="0.00"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">單位</label>
+                        <input type="text" id="p_unit" placeholder="例如：個、打"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button type="submit" id="submit-btn" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-md shadow transition">
+                        儲存商品
+                    </button>
+                    <button type="button" id="cancel-edit" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-md transition" onclick="resetProductForm()">
+                        取消修改
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 2. 進出貨操作區 -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center">
+                <i class="fas fa-exchange-alt mr-2 text-emerald-500"></i>庫存進出貨操作
+            </h2>
+            <form id="transaction-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">選擇庫存品項 (Inventory Item)</label>
+                    <select id="t_item_id" required class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                        <option value="">-- 請選擇品項 --</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">異動數量</label>
+                        <input type="number" id="t_qty" required min="1" placeholder="輸入數量"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">異動類型</label>
+                        <select id="t_type" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <option value="in">進貨 (Inbound)</option>
+                            <option value="out">出貨 (Outbound)</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-md shadow transition">
+                    確認送出異動
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. 商品主檔列表 (New!) -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-indigo-900">商品主檔清單 (Master Data)</h2>
+            <button onclick="fetchProducts()" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                <i class="fas fa-sync-alt mr-1"></i> 刷新主檔
+            </button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">商品編號</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">商品名稱</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">銷售單價</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">單位</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase text-center">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="product-table-body" class="bg-white divide-y divide-slate-200 text-sm text-slate-700">
+                    <!-- 商品資料載入中 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. 即時庫存狀態表格 -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-slate-700">即時庫存狀態 (Stock Status)</h2>
+            <button onclick="fetchInventoryStatus()" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                <i class="fas fa-sync-alt mr-1"></i> 刷新庫存
+            </button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">SKU / 品號</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">名稱</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase text-center">目前庫存</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">成本單價</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-table-body" class="bg-white divide-y divide-slate-200 text-sm text-slate-700">
+                    <!-- 庫存資料載入中 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_INV = '/api/inventory/';
+        const API_PROD = '/api/inventory/products/';
+
+        // 初始化：取得所有資料
+        async function fetchAllData() {
+            await Promise.all([fetchInventoryStatus(), fetchProducts()]);
+        }
+
+        // --- 商品主檔管理 ---
+
+        // 取得商品列表
+        async function fetchProducts() {
+            const tbody = document.getElementById('product-table-body');
+            try {
+                const response = await fetch(API_PROD);
+                const data = await response.json();
+                tbody.innerHTML = '';
+                
+                data.forEach(p => {
+                    const row = `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4 font-medium text-indigo-600">${p.product_no || '-'}</td>
+                            <td class="px-6 py-4 text-slate-900">${p.name || '-'}</td>
+                            <td class="px-6 py-4 text-slate-600">$${p.sales_price}</td>
+                            <td class="px-6 py-4 text-slate-500">${p.unit || '-'}</td>
+                            <td class="px-6 py-4 text-center">
+                                <button onclick='editProduct(${JSON.stringify(p)})' class="text-indigo-600 hover:text-indigo-900 font-medium">
+                                    <i class="fas fa-edit mr-1"></i>修改
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500">無法載入商品主檔</td></tr>'; }
+        }
+
+        // 進入編輯模式
+        function editProduct(product) {
+            document.getElementById('form-title').innerHTML = '<i class="fas fa-edit mr-2 text-orange-500"></i>修改商品主檔';
+            document.getElementById('p_id').value = product.id;
+            document.getElementById('p_sku').value = product.product_no;
+            document.getElementById('p_name').value = product.name;
+            document.getElementById('p_price').value = product.sales_price;
+            document.getElementById('p_unit').value = product.unit;
+            
+            document.getElementById('submit-btn').classList.replace('bg-indigo-600', 'bg-orange-600');
+            document.getElementById('submit-btn').classList.replace('hover:bg-indigo-700', 'hover:bg-orange-700');
+            document.getElementById('cancel-edit').classList.remove('hidden');
+            
+            // 捲動到表單
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 重設表單 (回到新增模式)
+        function resetProductForm() {
+            document.getElementById('form-title').innerHTML = '<i class="fas fa-box-open mr-2 text-indigo-500"></i>新增商品主檔';
+            document.getElementById('product-form').reset();
+            document.getElementById('p_id').value = '';
+            
+            document.getElementById('submit-btn').classList.replace('bg-orange-600', 'bg-indigo-600');
+            document.getElementById('submit-btn').classList.replace('hover:bg-orange-700', 'hover:bg-indigo-700');
+            document.getElementById('cancel-edit').classList.add('hidden');
+        }
+
+        // 處理商品儲存 (新增或修改)
+        document.getElementById('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const p_id = document.getElementById('p_id').value;
+            const payload = {
+                product_no: document.getElementById('p_sku').value,
+                name: document.getElementById('p_name').value,
+                sales_price: parseFloat(document.getElementById('p_price').value),
+                unit: document.getElementById('p_unit').value
+            };
+
+            const url = p_id ? `${API_PROD}${p_id}` : API_PROD;
+            const method = p_id ? 'PATCH' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert(p_id ? '✅ 商品修改成功！' : '✅ 商品新增成功！');
+                    resetProductForm();
+                    fetchAllData();
+                } else {
+                    const err = await res.json();
+                    alert(`❌ 錯誤: ${JSON.stringify(err.detail)}`);
+                }
+            } catch (e) { alert('❌ 連線錯誤'); }
+        });
+
+
+        // --- 庫存與異動管理 ---
+
+        async function fetchInventoryStatus() {
+            const tbody = document.getElementById('inventory-table-body');
+            const select = document.getElementById('t_item_id');
+            try {
+                const response = await fetch(API_INV);
+                const data = await response.json();
+                tbody.innerHTML = '';
+                select.innerHTML = '<option value="">-- 請選擇品項 --</option>';
+
+                data.forEach(item => {
+                    const stockClass = item.current_stock < 10 ? 'text-red-600 font-bold' : 'text-slate-900 font-semibold';
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4 text-slate-400 font-mono text-xs">${item.id}</td>
+                            <td class="px-6 py-4 font-medium text-slate-900">${item.sku}</td>
+                            <td class="px-6 py-4 text-slate-700">${item.name}</td>
+                            <td class="px-6 py-4 text-center ${stockClass}">${item.current_stock}</td>
+                            <td class="px-6 py-4 text-slate-500">$${item.unit_price}</td>
+                        </tr>
+                    `;
+                    select.innerHTML += `<option value="${item.id}">${item.sku} - ${item.name} (存量: ${item.current_stock})</option>`;
+                });
+            } catch (err) { tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500">無法載入庫存資料</td></tr>'; }
+        }
+
+        document.getElementById('transaction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                item_id: parseInt(document.getElementById('t_item_id').value),
+                quantity: parseInt(document.getElementById('t_qty').value),
+                type: document.getElementById('t_type').value
+            };
+            try {
+                const res = await fetch(API_INV + 'transaction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    alert(`✅ 操作成功！新庫存量: ${result.new_stock}`);
+                    document.getElementById('transaction-form').reset();
+                    fetchInventoryStatus();
+                } else { alert(`❌ 操作失敗: ${result.detail}`); }
+            } catch (e) { alert('❌ 連線錯誤'); }
+        });
+
+        window.onload = fetchAllData;
+    </script>
+</body>
+</html>
