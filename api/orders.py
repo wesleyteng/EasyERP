@@ -172,6 +172,71 @@ def create_order(order_in: POrderCreate, session: Session = Depends(get_session)
             detail=f"訂單建立失敗: {str(e)}"
         )
 
+from fastapi.responses import StreamingResponse
+from fastapi.templating import Jinja2Templates
+import pdfkit
+import urllib.parse
+import io
+import os
+
+templates = Jinja2Templates(directory="templates")
+
+@router.get("/{id}/pdf")
+def export_order_pdf(id: UUID, session: Session = Depends(get_session)):
+    """
+    匯出訂單為 PDF 出貨單格式。
+    """
+    # 1. 撈取訂單與關聯資料
+    order = session.get(POrder, id)
+    if not order:
+        raise HTTPException(status_code=404, detail="找不到該訂單")
+
+    # 2. 準備渲染資料 (Jinja2)
+    # templates.get_template 也可以，但這裡我們手動渲染以取得 HTML 字串
+    template_path = os.path.join("templates", "invoice.html")
+    with open(template_path, "r", encoding="utf-8") as f:
+        template_content = f.read()
+    
+    from jinja2 import Template
+    jinja_template = Template(template_content)
+    html_content = jinja_template.render(order=order)
+
+    # 3. 轉換為 PDF
+    # options 確保中文能正確顯示 (需系統有對應字體)
+    options = {
+        'encoding': "UTF-8",
+        'enable-local-file-access': None,
+        'quiet': '',
+        'margin-top': '0.75in',
+        'margin-right': '0.75in',
+        'margin-bottom': '0.75in',
+        'margin-left': '0.75in',
+    }
+    
+    # 如果是 Windows 且 wkhtmltopdf 不在 PATH 中，需指定路徑 (此處假設已在 PATH 中或為 Linux 環境)
+    # config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+    # pdf_data = pdfkit.from_string(html_content, False, options=options, configuration=config)
+    
+    try:
+        pdf_data = pdfkit.from_string(html_content, False, options=options)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF 轉換失敗: {str(e)}。請確認伺服器已安裝 wkhtmltopdf。")
+
+    # 4. 處理檔名與回傳
+    vendor_name = order.vendor.name if order.vendor else "客戶"
+    filename = f"{order.order_no}_{vendor_name}.pdf"
+    
+    # URL 編碼檔名以支援中文
+    encoded_filename = urllib.parse.quote(filename)
+    
+    return StreamingResponse(
+        io.BytesIO(pdf_data),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
+    )
+
 @router.get("/{id}", response_model=POrderRead)
 def get_order(id: UUID, session: Session = Depends(get_session)):
     """

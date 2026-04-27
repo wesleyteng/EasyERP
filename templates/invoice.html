@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; color: #333; line-height: 1.5; padding: 20px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .company-name { font-size: 28px; font-weight: bold; color: #1e3a8a; }
+        .quote-title { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 30px; letter-spacing: 5px; }
+        
+        .info-section { width: 100%; margin-bottom: 20px; }
+        .info-table { width: 100%; border-collapse: collapse; }
+        .info-table td { padding: 5px; vertical-align: top; }
+        .label { font-weight: bold; width: 80px; }
+
+        .item-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .item-table th { background-color: #f3f4f6; border: 1px solid #d1d5db; padding: 10px; text-align: center; font-size: 14px; }
+        .item-table td { border: 1px solid #d1d5db; padding: 10px; text-align: center; font-size: 14px; }
+        .text-left { text-align: left !important; }
+        .text-right { text-align: right !important; }
+
+        .total-section { margin-top: 20px; text-align: right; }
+        .total-box { display: inline-block; border: 1px solid #333; padding: 10px 20px; background-color: #f9fafb; }
+        .total-label { font-size: 16px; font-weight: bold; }
+        .total-amount { font-size: 20px; font-weight: bold; color: #b91c1c; margin-left: 20px; }
+
+        .terms-section { margin-top: 40px; font-size: 12px; color: #666; }
+        .terms-title { font-weight: bold; border-bottom: 1px solid #ccc; margin-bottom: 5px; padding-bottom: 2px; }
+
+        .signature-section { margin-top: 60px; display: flex; justify-content: space-between; }
+        .sig-box { width: 45%; border-top: 1px solid #333; padding-top: 10px; text-align: center; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name" align="center">誌滙有限公司 (Idea Tank Inc.)</div>
+        <div style="text-align: right;">
+            <div>地址：台北市中山區長春路258巷6號6樓之10</div>
+            <div>電話：(02) 2516-9437</div>
+        </div>
+    </div>
+
+    <div class="quote-title">出 貨 單 (Invoice)</div>
+
+    <table class="info-table">
+        <tr>
+            <td class="label">客戶名稱 Cust. Title：</td>
+            <td>{{ order.vendor.name }}</td>
+            <td class="label">單據編號 Doc No：</td>
+            <td>{{ order.order_no }}</td>
+        </tr>
+        <tr>
+            <td class="label">聯絡人 Attn.：</td>
+            <td>{{ order.contact or '--' }}</td>
+            <td class="label">日期 Date：</td>
+            <td>{{ order.date_in.strftime('%Y-%m-%d') }}</td>
+        </tr>
+        <tr>
+            <td class="label">聯絡電話 TEL：</td>
+            <td>{{ order.contact_tel or '--' }}</td>
+            <td class="label">地址 ADD：</td>
+            <td>{{ order.ship_address or '--' }}</td>
+        </tr>
+    </table>
+
+    <table class="item-table">
+        <thead>
+            <tr>
+                <th style="width: 50px;">項次 No</th>
+                <th>規格 / 項目描述 Item/Spec </th>
+                <th style="width: 60px;">數量 Qty</th>
+                <th style="width: 40px;">單位 Unit</th>
+                <th style="width: 100px;">單價 Unit Price</th>
+                <th style="width: 120px;">小計 Subtotal</th>
+                <th style="width: 120px;">備註 Remark</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.products %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td class="text-left">
+                    <strong>{{ item.product.name if item.product else '未知商品' }}</strong><br>
+                    <small style="color: #666;">{{ item.description or '' }}</small>
+                </td>
+                <td>{{ item.amount }}</td>
+                <td>{{ item.unit or '件' }}</td>
+                <td class="text-right">${{ "{:,.0f}".format(item.unit_price or 0) }}</td>
+                <td class="text-right">${{ "{:,.0f}".format(item.total_price or 0) }}</td>
+                <td class="text-right">{{ item.note or '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="total-section">
+        <div class="total-box">
+            <span class="total-label">總計金額 (未稅)：</span>
+            <span class="total-amount">TWD ${{ "{:,.0f}".format(order.total_price) }}</span>
+        </div>
+    </div>
+
+    <div class="terms-section">
+        <div class="terms-title">說明：</div>
+        <ol>
+            <li>請收到貨後核對品項與數量。</li>
+            <li>付款方式：驗收後 45 天內支付。</li>
+            <li>軟體開發專案包含三個月保固期，僅限原需求範圍內之 Bug 修復。</li>
+            <li>如需修改需求，將另行議價。</li>
+        </ol>
+    </div>
+
+    <div class="signature-section" style="margin-top: 100px;">
+        <div style="float: left; width: 40%; border-top: 1px solid #000; text-align: center; padding-top: 10px;">
+            客戶確認簽章 (Customer Signature)
+        </div>
+        <div style="float: right; width: 40%; border-top: 1px solid #000; text-align: center; padding-top: 10px;">
+            Idea Tank Inc. 經辦人簽章
+        </div>
+        <div style="clear: both;"></div>
+    </div>
+</body>
+</html>
