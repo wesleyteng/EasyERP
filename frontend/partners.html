@@ -8,166 +8,254 @@
 </head>
 <body class="p-8 bg-slate-50 min-h-screen">
 
-    <!-- 標題區域 -->
-    <div class="mb-8">
-        <h1 class="text-2xl font-bold text-slate-800">合作夥伴管理</h1>
-        <p class="text-slate-500 text-sm">管理系統中的客戶與供應商基本資料</p>
+    <div class="mb-8 text-center md:text-left">
+        <h1 class="text-2xl font-bold text-slate-800">合作夥伴管理 (Partners)</h1>
+        <p class="text-slate-500 text-sm">維護完整的客戶與供應商資料庫</p>
     </div>
 
-    <!-- 新增表單區區 -->
+    <!-- 新增/修改表單區 -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
-        <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center">
-            <i class="fas fa-plus-circle mr-2 text-indigo-500"></i>新增合作夥伴
+        <h2 id="form-title" class="text-lg font-semibold text-slate-700 mb-6 flex items-center border-b pb-2">
+            <i class="fas fa-user-plus mr-2 text-indigo-500"></i>新增合作夥伴
         </h2>
-        <form id="partner-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <form id="partner-form" class="space-y-6">
+            <input type="hidden" id="p_id">
+
+            <!-- 第一組：基本資訊 -->
             <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">名稱</label>
-                <input type="text" id="name" required placeholder="例如：某某科技有限公司"
-                    class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">基本資訊</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">合作夥伴名稱 (Name)</label>
+                        <input type="text" id="p_name" required class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">ERP 代碼 (ERP ID)</label>
+                        <input type="text" id="p_erp_id" required class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">類型</label>
+                        <select id="p_type" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="1">客戶 (Customer)</option>
+                            <option value="2">供應商 (Supplier)</option>
+                            <option value="0">其他</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">統一編號 (Serial No)</label>
+                        <input type="text" id="p_serial_no" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">負責人 (Boss)</label>
+                        <input type="text" id="p_boss" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
             </div>
+
+            <!-- 第二組：聯絡資訊 -->
             <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">ERP ID</label>
-                <input type="text" id="erp_id" required placeholder="系統代碼"
-                    class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-t pt-4">聯絡資訊</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">主要聯絡人</label>
+                        <input type="text" id="p_contact" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">聯絡人電話</label>
+                        <input type="text" id="p_contact_tel" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">公司電話</label>
+                        <input type="text" id="p_tel" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">傳真 (Fax)</label>
+                        <input type="text" id="p_fax" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">公司地址</label>
+                        <input type="text" id="p_address" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">郵遞區號</label>
+                        <input type="text" id="p_zip" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
             </div>
+
+            <!-- 第三組：財務資訊 -->
             <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">類型</label>
-                <select id="type" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-                    <option value="1">客戶 (Customer)</option>
-                    <option value="2">供應商 (Supplier)</option>
-                    <option value="0">其他</option>
-                </select>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-t pt-4">發票與財務資訊</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="md:col-span-3">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">發票地址</label>
+                        <input type="text" id="p_invoice_address" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">發票郵遞區號</label>
+                        <input type="text" id="p_invoice_zip" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">付款聯絡電話</label>
+                        <input type="text" id="p_payment_tel" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">電話</label>
-                <input type="text" id="tel" placeholder="聯絡電話"
-                    class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-            </div>
-            <div class="md:col-span-4 flex justify-end">
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md font-medium shadow-sm transition flex items-center">
-                    <i class="fas fa-save mr-2"></i>儲存並新增
+
+            <div class="flex space-x-3 pt-4 border-t">
+                <button type="submit" id="submit-btn" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-lg transition transform hover:-translate-y-0.5">
+                    儲存資料
+                </button>
+                <button type="button" id="cancel-edit" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 px-8 py-3 rounded-lg font-bold transition" onclick="resetForm()">
+                    取消
                 </button>
             </div>
         </form>
     </div>
 
-    <!-- 資料列表區區 -->
+    <!-- 列表區 -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-            <h2 class="text-lg font-semibold text-slate-700">合作夥伴清單</h2>
-            <button onclick="fetchPartners()" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
-                <i class="fas fa-sync-alt mr-1"></i> 重新整理
+        <div class="bg-slate-800 px-6 py-4 flex justify-between items-center text-white">
+            <h2 class="text-lg font-bold">合作夥伴清單</h2>
+            <button onclick="fetchPartners()" class="text-indigo-300 hover:text-white text-sm font-medium">
+                <i class="fas fa-sync-alt mr-1"></i> 刷新清單
             </button>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200">
-                <thead class="bg-slate-50">
+                <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">ERP ID</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">名稱</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">類型</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">電話</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">狀態</th>
+                        <th class="px-6 py-4 text-left">代碼 / 名稱</th>
+                        <th class="px-6 py-4 text-left">類型</th>
+                        <th class="px-6 py-4 text-left">統編 / 負責人</th>
+                        <th class="px-6 py-4 text-left">聯絡資訊</th>
+                        <th class="px-6 py-4 text-center">操作</th>
                     </tr>
                 </thead>
-                <tbody id="partner-table-body" class="bg-white divide-y divide-slate-200 text-sm text-slate-700">
-                    <!-- JavaScript 動態渲染內容 -->
-                    <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-slate-400">
-                            <i class="fas fa-spinner fa-spin mr-2"></i>資料載入中...
-                        </td>
-                    </tr>
+                <tbody id="partner-table-body" class="bg-white divide-y divide-slate-200 text-sm">
+                    <!-- 載入中 -->
                 </tbody>
             </table>
         </div>
     </div>
 
     <script>
-        // API 路徑 (根據 main.py 的掛載點)
-        const API_BASE = '/api/partners/';
+        const API_URL = '/api/partners/';
 
-        // 轉換類型代碼為文字
-        function getTypeText(type) {
-            switch(parseInt(type)) {
-                case 1: return '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">客戶</span>';
-                case 2: return '<span class="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">供應商</span>';
-                default: return '<span class="px-2 py-1 bg-slate-100 text-slate-700 rounded-full text-xs">其他</span>';
-            }
-        }
+        // 頁面載入
+        window.onload = fetchPartners;
 
-        // 取得所有合作夥伴資料
         async function fetchPartners() {
             const tbody = document.getElementById('partner-table-body');
-            
             try {
-                const response = await fetch(API_BASE);
-                if (!response.ok) throw new Error('無法取得資料');
+                const response = await fetch(API_URL);
                 const data = await response.json();
-
                 tbody.innerHTML = '';
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">目前尚無資料</td></tr>';
-                    return;
-                }
 
-                data.forEach(item => {
-                    const row = `
+                data.forEach(p => {
+                    const typeLabel = p.type == 1 
+                        ? '<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">客戶</span>' 
+                        : '<span class="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs font-bold">供應商</span>';
+
+                    tbody.innerHTML += `
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap font-mono text-xs text-indigo-600">${item.erp_id}</td>
-                            <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-900">${item.name || '-'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">${getTypeText(item.type)}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-slate-500">${item.tel || '-'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="flex items-center">
-                                    <span class="h-2 w-2 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-300'} mr-2"></span>
-                                    ${item.status ? '啟用中' : '已停用'}
-                                </span>
+                            <td class="px-6 py-4">
+                                <div class="font-mono text-xs text-indigo-500 mb-1">${p.erp_id}</div>
+                                <div class="font-bold text-slate-900">${p.name || '-'}</div>
+                            </td>
+                            <td class="px-6 py-4">${typeLabel}</td>
+                            <td class="px-6 py-4">
+                                <div class="text-slate-600">${p.serial_no || '-'}</div>
+                                <div class="text-slate-400 text-xs">${p.boss || '-'}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-slate-700"><i class="fas fa-user text-slate-300 mr-2"></i>${p.contact || '-'}</div>
+                                <div class="text-slate-500 text-xs mt-1"><i class="fas fa-phone text-slate-300 mr-2"></i>${p.contact_tel || p.tel || '-'}</div>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <button onclick='editPartner(${JSON.stringify(p)})' class="bg-slate-100 hover:bg-indigo-600 hover:text-white text-indigo-600 p-2 rounded-lg transition">
+                                    <i class="fas fa-edit"></i> 修改
+                                </button>
                             </td>
                         </tr>
                     `;
-                    tbody.innerHTML += row;
                 });
-            } catch (error) {
-                console.error('Fetch Error:', error);
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-red-500 font-medium">載入失敗：${error.message}</td></tr>`;
-            }
+            } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-red-500">無法載入合作夥伴資料</td></tr>'; }
         }
 
-        // 處理表單提交
+        function editPartner(p) {
+            document.getElementById('form-title').innerHTML = '<i class="fas fa-user-edit mr-2 text-orange-500"></i>修改合作夥伴資料';
+            document.getElementById('p_id').value = p.id;
+            document.getElementById('p_name').value = p.name || '';
+            document.getElementById('p_erp_id').value = p.erp_id || '';
+            document.getElementById('p_type').value = p.type;
+            document.getElementById('p_serial_no').value = p.serial_no || '';
+            document.getElementById('p_contact').value = p.contact || '';
+            document.getElementById('p_contact_tel').value = p.contact_tel || '';
+            document.getElementById('p_tel').value = p.tel || '';
+            document.getElementById('p_fax').value = p.fax || '';
+            document.getElementById('p_zip').value = p.zip || '';
+            document.getElementById('p_address').value = p.address || '';
+            document.getElementById('p_boss').value = p.boss || '';
+            document.getElementById('p_invoice_address').value = p.invoice_address || '';
+            document.getElementById('p_invoice_zip').value = p.invoice_zip || '';
+            document.getElementById('p_payment_tel').value = p.payment_tel || '';
+
+            document.getElementById('submit-btn').innerText = '確認修改並更新';
+            document.getElementById('submit-btn').classList.replace('bg-indigo-600', 'bg-orange-600');
+            document.getElementById('cancel-edit').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetForm() {
+            document.getElementById('form-title').innerHTML = '<i class="fas fa-user-plus mr-2 text-indigo-500"></i>新增合作夥伴';
+            document.getElementById('partner-form').reset();
+            document.getElementById('p_id').value = '';
+            document.getElementById('submit-btn').innerText = '儲存資料';
+            document.getElementById('submit-btn').classList.replace('bg-orange-600', 'bg-indigo-600');
+            document.getElementById('cancel-edit').classList.add('hidden');
+        }
+
         document.getElementById('partner-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+            const id = document.getElementById('p_id').value;
             const payload = {
-                name: document.getElementById('name').value,
-                erp_id: document.getElementById('erp_id').value,
-                type: parseInt(document.getElementById('type').value),
-                tel: document.getElementById('tel').value,
+                name: document.getElementById('p_name').value,
+                erp_id: document.getElementById('p_erp_id').value,
+                type: parseInt(document.getElementById('p_type').value),
+                serial_no: document.getElementById('p_serial_no').value,
+                contact: document.getElementById('p_contact').value,
+                contact_tel: document.getElementById('p_contact_tel').value,
+                tel: document.getElementById('p_tel').value,
+                fax: document.getElementById('p_fax').value,
+                zip: document.getElementById('p_zip').value,
+                address: document.getElementById('p_address').value,
+                boss: document.getElementById('p_boss').value,
+                invoice_address: document.getElementById('p_invoice_address').value,
+                invoice_zip: document.getElementById('p_invoice_zip').value,
+                payment_tel: document.getElementById('p_payment_tel').value,
                 status: true
             };
 
+            const url = id ? `${API_URL}${id}` : API_URL;
+            const method = id ? 'PATCH' : 'POST';
+
             try {
-                const response = await fetch(API_BASE, {
-                    method: 'POST',
+                const res = await fetch(url, {
+                    method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
-                if (response.ok) {
-                    // 成功後清空表單並重新載入列表
-                    document.getElementById('partner-form').reset();
-                    await fetchPartners();
-                    alert('✅ 合作夥伴新增成功！');
+                if (res.ok) {
+                    alert('✅ 儲存成功！');
+                    resetForm();
+                    fetchPartners();
                 } else {
-                    const error = await response.json();
-                    alert(`❌ 新增失敗：${error.detail || '請檢查輸入欄位'}`);
+                    const err = await res.json();
+                    alert(`❌ 錯誤: ${JSON.stringify(err.detail)}`);
                 }
-            } catch (error) {
-                alert('❌ 系統連線錯誤');
-            }
+            } catch (e) { alert('❌ 連線錯誤'); }
         });
-
-        // 初始載入
-        window.onload = fetchPartners;
     </script>
 </body>
 </html>

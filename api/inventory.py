@@ -55,6 +55,61 @@ def read_inventory_items(session: Session = Depends(get_session)):
     """
     return session.exec(select(InventoryItem)).all()
 
+@router.get("/transactions")
+def read_transactions(session: Session = Depends(get_session)):
+    """
+    取得所有庫存異動紀錄 (包含關聯的品號資訊)。
+    """
+    # 使用 select(Transaction) 並透過 relationship 自動載入 item (需確保 models.py 有定義)
+    statement = select(Transaction).order_by(Transaction.transaction_date.desc())
+    results = session.exec(statement).all()
+    
+    # 為了方便前端，手動組裝包含 SKU 的回傳格式
+    output = []
+    for tx in results:
+        tx_dict = tx.dict()
+        tx_dict["sku"] = tx.item.sku if tx.item else "Unknown"
+        output.append(tx_dict)
+    
+    return output
+
+@router.post("/sync-costs")
+def sync_inventory_costs(session: Session = Depends(get_session)):
+    """
+    從 Product 主檔抓取最新成本 (cost) 並更新 InventoryItem 的單價 (unit_price)。
+    """
+    products = session.exec(select(Product)).all()
+    count = 0
+    for p in products:
+        # 尋找 SKU 對應的 InventoryItem
+        item = session.exec(select(InventoryItem).where(InventoryItem.sku == p.product_no)).first()
+        if item:
+            item.unit_price = float(p.cost)
+            session.add(item)
+            count += 1
+    session.commit()
+    return {"message": f"成本同步完成，共更新 {count} 筆品項。"}
+
+@router.post("/recalculate-stock")
+def recalculate_inventory_stock(session: Session = Depends(get_session)):
+    """
+    依據 Transaction 紀錄重新統計所有品項的庫存值。
+    """
+    items = session.exec(select(InventoryItem)).all()
+    for item in items:
+        # 取得該品項的所有異動
+        txs = session.exec(select(Transaction).where(Transaction.item_id == item.id)).all()
+        new_stock = 0
+        for tx in txs:
+            if tx.type == TransactionType.inbound:
+                new_stock += tx.quantity
+            else:
+                new_stock -= tx.quantity
+        item.current_stock = new_stock
+        session.add(item)
+    session.commit()
+    return {"message": "庫存水位重新計算完成。"}
+
 # --- 1. 商品主檔 (Product) CRUD ---
 
 @router.post("/products/", response_model=Product, status_code=status.HTTP_201_CREATED)
