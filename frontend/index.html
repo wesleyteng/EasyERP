@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EasyERP 企業管理系統</title>
+    <title>EasyERP 管理系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .sidebar-link.active {
-            background-color: #3730a3; /* indigo-800 */
-            border-left: 4px solid #818cf8; /* indigo-400 */
+            background-color: #3730a3;
+            border-left: 4px solid #818cf8;
         }
     </style>
 </head>
 <body class="bg-slate-100 font-sans min-h-screen flex">
 
-    <!-- 側邊導覽列 Sidebar -->
     <aside class="w-64 bg-indigo-900 text-white flex-shrink-0 flex flex-col shadow-xl">
         <div class="p-6">
             <h1 class="text-2xl font-bold tracking-wider flex items-center">
@@ -23,57 +22,86 @@
             </h1>
             <p class="text-indigo-300 text-xs mt-1 italic">Micro-ERP Solutions</p>
         </div>
-        
-        <nav class="mt-4 flex-grow">
-            <ul id="menu-list" class="space-y-1">
-                <li data-role="11">
-                    <a href="javascript:void(0)" onclick="loadPage('partners.html', this)" class="sidebar-link active flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
-                        <i class="fas fa-users w-6"></i>
-                        <span class="ml-3">合作夥伴管理</span>
-                    </a>
+
+        <nav class="mt-4 flex-grow overflow-y-auto">
+            <ul id="menu-list" class="space-y-4">
+                <li class="menu-module">
+                    <div class="px-6 mb-2 text-xs font-bold text-indigo-300 uppercase tracking-wider">主檔管理模組</div>
+                    <ul class="space-y-1">
+                        <li data-role="11">
+                            <a href="javascript:void(0)" onclick="loadPage('partners.html', this)" class="sidebar-link active flex items-center px-6 py-3 hover:bg-indigo-800 transition-colors">
+                                <i class="fas fa-users w-6"></i>
+                                <span class="ml-3">合作夥伴管理</span>
+                            </a>
+                        </li>
+                        <li data-role="11">
+                            <a href="javascript:void(0)" onclick="loadPage('productmgt.html', this)" class="sidebar-link flex items-center px-6 py-3 hover:bg-indigo-800 transition-colors">
+                                <i class="fas fa-box w-6"></i>
+                                <span class="ml-3">商品管理</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
-                <li data-role="11">
-                    <a href="javascript:void(0)" onclick="loadPage('productmgt.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
-                        <i class="fas fa-box w-6"></i>
-                        <span class="ml-3">商品管理</span>
-                    </a>
+
+                <li class="menu-module">
+                    <div class="px-6 mb-2 text-xs font-bold text-indigo-300 uppercase tracking-wider">會計模組</div>
+                    <ul class="space-y-1">
+                        <li data-role="22">
+                            <a href="javascript:void(0)" onclick="loadPage('JournalEntry.html', this)" class="sidebar-link flex items-center px-6 py-3 hover:bg-indigo-800 transition-colors">
+                                <i class="fas fa-book w-6"></i>
+                                <span class="ml-3">日記帳登錄</span>
+                            </a>
+                        </li>
+                        <li data-role="22">
+                            <a href="javascript:void(0)" onclick="loadPage('JESearch.html', this)" class="sidebar-link flex items-center px-6 py-3 hover:bg-indigo-800 transition-colors">
+                                <i class="fas fa-magnifying-glass-dollar w-6"></i>
+                                <span class="ml-3">傳票查詢</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
-                <li data-role="22">
-                    <a href="javascript:void(0)" onclick="loadPage('inventory.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
-                        <i class="fas fa-boxes w-6"></i>
-                        <span class="ml-3">庫存異動作業</span>
-                    </a>
+
+                <li class="menu-module">
+                    <div class="px-6 mb-2 text-xs font-bold text-indigo-300 uppercase tracking-wider">訂單管理模組</div>
+                    <ul class="space-y-1">
+                        <li data-role="22">
+                            <a href="javascript:void(0)" onclick="loadPage('orders.html', this)" class="sidebar-link flex items-center px-6 py-3 hover:bg-indigo-800 transition-colors">
+                                <i class="fas fa-file-invoice-dollar w-6"></i>
+                                <span class="ml-3">訂單作業</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
-                <li data-role="22">
-                    <a href="javascript:void(0)" onclick="loadPage('orders.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
-                        <i class="fas fa-file-invoice-dollar w-6"></i>
-                        <span class="ml-3">訂單作業</span>
-                    </a>
+
+                <li class="menu-module">
+                    <div class="px-6 mb-2 text-xs font-bold text-indigo-300 uppercase tracking-wider">庫存管理模組</div>
+                    <ul class="space-y-1">
+                        <li data-role="22">
+                            <a href="javascript:void(0)" onclick="loadPage('inventory.html', this)" class="sidebar-link flex items-center px-6 py-3 hover:bg-indigo-800 transition-colors">
+                                <i class="fas fa-boxes w-6"></i>
+                                <span class="ml-3">庫存異動作業</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
-                <li data-role="22">
-                    <a href="javascript:void(0)" onclick="loadPage('JournalEntry.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
-                        <i class="fas fa-book w-6"></i>
-                        <span class="ml-3">日記帳登錄</span>
-                    </a>
-                </li>
-                <li data-role="22">
-                    <a href="javascript:void(0)" onclick="loadPage('JESearch.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
-                        <i class="fas fa-magnifying-glass-dollar w-6"></i>
-                        <span class="ml-3">傳票查詢</span>
-                    </a>
-                </li>
-                <li data-role="00">
-                    <a href="javascript:void(0)" onclick="loadPage('accounts.html', this)" class="sidebar-link flex items-center px-6 py-4 hover:bg-indigo-800 transition-colors">
-                        <i class="fas fa-user-shield w-6"></i>
-                        <span class="ml-3">權限管理</span>
-                    </a>
+
+                <li class="menu-module">
+                    <div class="px-6 mb-2 text-xs font-bold text-indigo-300 uppercase tracking-wider">系統管理模組</div>
+                    <ul class="space-y-1">
+                        <li data-role="00">
+                            <a href="javascript:void(0)" onclick="loadPage('accounts.html', this)" class="sidebar-link flex items-center px-6 py-3 hover:bg-indigo-800 transition-colors">
+                                <i class="fas fa-user-shield w-6"></i>
+                                <span class="ml-3">權限管理</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
             </ul>
         </nav>
 
         <div class="p-4 border-t border-indigo-800">
             <button onclick="logout()" class="w-full flex items-center justify-center px-4 py-2 bg-rose-600 hover:bg-rose-700 rounded-lg text-sm transition">
-                <i class="fas fa-sign-out-alt mr-2"></i> 登出系統
+                <i class="fas fa-sign-out-alt mr-2"></i>登出系統
             </button>
         </div>
 
@@ -82,11 +110,9 @@
         </div>
     </aside>
 
-    <!-- 右側主要內容區 Main Content -->
     <main class="flex-grow flex flex-col min-w-0 overflow-hidden">
-        <!-- 頂部資訊列 Header -->
         <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm">
-            <h2 id="page-title" class="text-xl font-semibold text-slate-800">首頁</h2>
+            <h2 id="page-title" class="text-xl font-semibold text-slate-800">功能頁面</h2>
             <div class="flex items-center space-x-4">
                 <div class="text-right">
                     <div id="user-name" class="text-sm font-bold text-slate-700">載入中...</div>
@@ -98,29 +124,25 @@
             </div>
         </header>
 
-        <!-- 內容容器 Content Container -->
         <section class="flex-grow p-0 overflow-hidden relative">
             <iframe id="content-frame" src="" class="w-full h-full border-none"></iframe>
         </section>
     </main>
 
     <script>
-        // 1. 登入檢查與權限過濾
         const userJson = localStorage.getItem('erp_user');
         if (!userJson) {
             window.location.href = 'login.html';
         }
         const user = JSON.parse(userJson);
 
-        // 更新 Header 資訊
         document.getElementById('user-name').innerText = user.name;
         document.getElementById('user-avatar').innerText = user.name.charAt(0);
-        
-        const rolesMap = { '00': '管理者', '11': '經理', '22': '一般用戶' };
+
+        const rolesMap = { '00': '系統管理員', '11': '主檔管理', '22': '作業人員' };
         document.getElementById('user-role').innerText = rolesMap[user.role_id_list] || '未知角色';
 
-        // 權限過濾邏輯
-        const menuItems = document.querySelectorAll('#menu-list li');
+        const menuItems = document.querySelectorAll('#menu-list [data-role]');
         let firstAvailable = null;
 
         menuItems.forEach(li => {
@@ -128,28 +150,30 @@
             let hasAccess = false;
 
             if (user.role_id_list === '00') {
-                hasAccess = true; // 管理者全開
+                hasAccess = true;
             } else if (user.role_id_list === '11') {
-                hasAccess = (requiredRole !== '00'); // 經理除了權限管理外都開
+                hasAccess = (requiredRole !== '00');
             } else if (user.role_id_list === '22') {
-                hasAccess = (requiredRole === '22'); // 一般用戶只開 22
+                hasAccess = (requiredRole === '22');
             }
 
             if (!hasAccess) {
                 li.remove();
-            } else {
-                if (!firstAvailable) firstAvailable = li.querySelector('a');
+            } else if (!firstAvailable) {
+                firstAvailable = li.querySelector('a');
             }
         });
 
-        // 預設載入第一個可用頁面
+        document.querySelectorAll('.menu-module').forEach(module => {
+            if (!module.querySelector('[data-role]')) {
+                module.remove();
+            }
+        });
+
         if (firstAvailable) {
             firstAvailable.click();
         }
 
-        /**
-         * 切換頁面邏輯
-         */
         function loadPage(url, element) {
             const frame = document.getElementById('content-frame');
             frame.src = url;
