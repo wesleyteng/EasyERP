@@ -168,3 +168,49 @@ class BackendAccount(SQLModel, table=True):
     role_id_list: Optional[str] = Field(default=None, max_length=100)
     status: bool = Field(default=True)
     date_in: datetime = Field(default_factory=datetime.now)
+
+
+# --- 5. Journal Entry Models ---
+
+class JournalEntryType(str, Enum):
+    general = "general"
+    adjustment = "adjustment"
+    closing = "closing"
+    reversing = "reversing"
+
+
+class JournalEntry(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True, nullable=False)
+    entry_no: str = Field(max_length=30, nullable=False, index=True, unique=True)
+    entry_date: datetime = Field(nullable=False)
+    description: Optional[str] = Field(default=None, max_length=300)
+    type: JournalEntryType = Field(default=JournalEntryType.general, nullable=False)
+    currency: str = Field(default="TWD", max_length=10, nullable=False)
+    exchange_rate: Decimal = Field(default=Decimal("1.000000"), max_digits=18, decimal_places=6)
+    note: Optional[str] = Field(default=None, max_length=1000)
+    total_debit: Decimal = Field(default=Decimal("0.00"), max_digits=18, decimal_places=2)
+    total_credit: Decimal = Field(default=Decimal("0.00"), max_digits=18, decimal_places=2)
+    status: bool = Field(default=True)
+    date_in: datetime = Field(default_factory=datetime.now)
+    update_time: datetime = Field(default_factory=datetime.now)
+
+    lines: List["JournalEntryLine"] = Relationship(
+        back_populates="entry",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+
+class JournalEntryLine(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    journal_entry_id: uuid.UUID = Field(foreign_key="journalentry.id", nullable=False)
+    line_no: int = Field(default=1)
+    account_code: str = Field(max_length=50, nullable=False)
+    account_name: str = Field(max_length=200, nullable=False)
+    summary: Optional[str] = Field(default=None, max_length=300)
+    debit_amount: Decimal = Field(default=Decimal("0.00"), max_digits=18, decimal_places=2)
+    credit_amount: Decimal = Field(default=Decimal("0.00"), max_digits=18, decimal_places=2)
+    tax_code: Optional[str] = Field(default=None, max_length=30)
+    project_code: Optional[str] = Field(default=None, max_length=50)
+    reference_no: Optional[str] = Field(default=None, max_length=100)
+
+    entry: Optional[JournalEntry] = Relationship(back_populates="lines")

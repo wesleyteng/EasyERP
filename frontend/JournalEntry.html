@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日記帳傳票</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="p-8 bg-slate-50 min-h-screen">
+
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">日記帳傳票</h1>
+            <p class="text-slate-500 text-sm">登打每日會計分錄，系統會即時計算借貸合計並檢查平衡。</p>
+        </div>
+        <button onclick="resetForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition">
+            <i class="fas fa-rotate-left mr-2"></i>清空表單
+        </button>
+    </div>
+
+    <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 mb-8">
+        <h2 class="text-xl font-bold text-slate-700 mb-6 flex items-center border-b pb-4">
+            <i class="fas fa-file-invoice mr-3 text-indigo-500"></i>傳票表頭
+        </h2>
+
+        <form id="journal-form" class="space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">傳票號碼</label>
+                    <input type="text" id="entry_no" required placeholder="例如：JE-20260428001"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">日期</label>
+                    <input type="date" id="entry_date" required
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">傳票類型</label>
+                    <select id="entry_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="general">一般傳票</option>
+                        <option value="adjustment">調整傳票</option>
+                        <option value="closing">結帳傳票</option>
+                        <option value="reversing">迴轉傳票</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">幣別</label>
+                    <input type="text" id="currency" required value="TWD" maxlength="10"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none uppercase">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">匯率</label>
+                    <input type="number" id="exchange_rate" required min="0" step="0.000001" value="1.000000"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-right font-mono">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">描述</label>
+                    <input type="text" id="description" placeholder="例如：支付本月租金"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">備註</label>
+                    <textarea id="note" rows="2" placeholder="補充說明或內部備註"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-700">分錄明細</h3>
+                    <button type="button" onclick="addLineRow()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition">
+                        <i class="fas fa-plus mr-2"></i>新增分錄
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-[1200px] w-full border-collapse">
+                        <thead class="text-slate-500 text-xs uppercase text-left">
+                            <tr>
+                                <th class="pb-2 px-2 w-28">科目代號</th>
+                                <th class="pb-2 px-2 w-40">科目名稱</th>
+                                <th class="pb-2 px-2">摘要</th>
+                                <th class="pb-2 px-2 w-32 text-right">借方</th>
+                                <th class="pb-2 px-2 w-32 text-right">貸方</th>
+                                <th class="pb-2 px-2 w-24">稅碼</th>
+                                <th class="pb-2 px-2 w-32">專案代號</th>
+                                <th class="pb-2 px-2 w-32">參考號</th>
+                                <th class="pb-2 px-2 w-14 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="line-rows" class="divide-y divide-slate-200 text-sm"></tbody>
+                    </table>
+                </div>
+
+                <p class="mt-3 text-xs text-slate-400">
+                    輸入金額後按 Enter 會自動新增下一列；同一列只能填借方或貸方其中一邊。
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+                <div class="bg-white border border-slate-200 rounded-xl p-5">
+                    <div class="text-sm font-semibold text-slate-500 mb-1">借方合計</div>
+                    <div id="total-debit" class="text-2xl font-bold text-indigo-600 font-mono text-right">0.00</div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl p-5">
+                    <div class="text-sm font-semibold text-slate-500 mb-1">貸方合計</div>
+                    <div id="total-credit" class="text-2xl font-bold text-indigo-600 font-mono text-right">0.00</div>
+                </div>
+                <div id="balance-card" class="bg-rose-50 border border-rose-200 rounded-xl p-5">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="text-sm font-semibold text-slate-500 mb-1">差額</div>
+                            <div id="balance-diff" class="text-2xl font-bold text-rose-600 font-mono text-right">0.00</div>
+                        </div>
+                        <span id="balance-status" class="px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-bold">借貸不平</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button id="submit-btn" type="submit" disabled
+                    class="bg-slate-300 text-white px-10 py-3 rounded-xl font-bold shadow transition cursor-not-allowed">
+                    <i class="fas fa-check-double mr-2"></i>儲存傳票
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const API_JOURNAL = '/api/journal-entries/';
+
+        function moneyValue(value) {
+            const parsed = Number.parseFloat(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function formatMoney(value) {
+            return value.toLocaleString('zh-TW', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function setToday() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('entry_date').value = `${yyyy}-${mm}-${dd}`;
+        }
+
+        function addLineRow(focusFirst = true) {
+            const tbody = document.getElementById('line-rows');
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-white transition-colors';
+            row.innerHTML = `
+                <td class="py-3 px-2">
+                    <input type="text" required class="account-code w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none font-mono" placeholder="1101">
+                </td>
+                <td class="py-3 px-2">
+                    <input type="text" required class="account-name w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" placeholder="現金">
+                </td>
+                <td class="py-3 px-2">
+                    <input type="text" class="summary w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" placeholder="摘要">
+                </td>
+                <td class="py-3 px-2">
+                    <input type="number" min="0" step="0.01" class="debit w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none text-right font-mono" placeholder="0.00">
+                </td>
+                <td class="py-3 px-2">
+                    <input type="number" min="0" step="0.01" class="credit w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none text-right font-mono" placeholder="0.00">
+                </td>
+                <td class="py-3 px-2">
+                    <input type="text" class="tax-code w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" placeholder="TX">
+                </td>
+                <td class="py-3 px-2">
+                    <input type="text" class="project-code w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" placeholder="PRJ">
+                </td>
+                <td class="py-3 px-2">
+                    <input type="text" class="reference-no w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" placeholder="REF">
+                </td>
+                <td class="py-3 px-2 text-center">
+                    <button type="button" onclick="removeLineRow(this)" class="text-red-400 hover:text-red-600 transition">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+            bindRowEvents(row);
+            updateTotals();
+
+            if (focusFirst) {
+                row.querySelector('.account-code').focus();
+            }
+        }
+
+        function bindRowEvents(row) {
+            row.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', () => {
+                    if (input.classList.contains('debit') && moneyValue(input.value) > 0) {
+                        row.querySelector('.credit').value = '';
+                    }
+                    if (input.classList.contains('credit') && moneyValue(input.value) > 0) {
+                        row.querySelector('.debit').value = '';
+                    }
+                    updateTotals();
+                });
+
+                input.addEventListener('keydown', event => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const inputs = Array.from(row.querySelectorAll('input'));
+                        const index = inputs.indexOf(input);
+                        if (index >= 0 && index < inputs.length - 1) {
+                            inputs[index + 1].focus();
+                        } else {
+                            addLineRow();
+                        }
+                    }
+                });
+            });
+        }
+
+        function removeLineRow(button) {
+            const rows = document.querySelectorAll('#line-rows tr');
+            if (rows.length <= 2) {
+                alert('傳票至少需要兩筆分錄明細');
+                return;
+            }
+            button.closest('tr').remove();
+            updateTotals();
+        }
+
+        function collectLines() {
+            return Array.from(document.querySelectorAll('#line-rows tr')).map((row, index) => ({
+                line_no: index + 1,
+                account_code: row.querySelector('.account-code').value.trim(),
+                account_name: row.querySelector('.account-name').value.trim(),
+                summary: row.querySelector('.summary').value.trim() || null,
+                debit_amount: moneyValue(row.querySelector('.debit').value).toFixed(2),
+                credit_amount: moneyValue(row.querySelector('.credit').value).toFixed(2),
+                tax_code: row.querySelector('.tax-code').value.trim() || null,
+                project_code: row.querySelector('.project-code').value.trim() || null,
+                reference_no: row.querySelector('.reference-no').value.trim() || null
+            }));
+        }
+
+        function updateTotals() {
+            let totalDebit = 0;
+            let totalCredit = 0;
+
+            document.querySelectorAll('#line-rows tr').forEach(row => {
+                totalDebit += moneyValue(row.querySelector('.debit').value);
+                totalCredit += moneyValue(row.querySelector('.credit').value);
+            });
+
+            const diff = totalDebit - totalCredit;
+            const balanced = Math.abs(diff) < 0.005 && totalDebit > 0 && totalCredit > 0;
+            const submitBtn = document.getElementById('submit-btn');
+            const balanceCard = document.getElementById('balance-card');
+            const balanceStatus = document.getElementById('balance-status');
+
+            document.getElementById('total-debit').innerText = formatMoney(totalDebit);
+            document.getElementById('total-credit').innerText = formatMoney(totalCredit);
+            document.getElementById('balance-diff').innerText = formatMoney(diff);
+
+            if (balanced) {
+                balanceCard.className = 'bg-emerald-50 border border-emerald-200 rounded-xl p-5';
+                balanceStatus.className = 'px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold';
+                balanceStatus.innerText = '借貸平衡';
+                submitBtn.disabled = false;
+                submitBtn.className = 'bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-bold shadow-lg transition transform hover:-translate-y-0.5';
+            } else {
+                balanceCard.className = 'bg-rose-50 border border-rose-200 rounded-xl p-5';
+                balanceStatus.className = 'px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-bold';
+                balanceStatus.innerText = '借貸不平';
+                submitBtn.disabled = true;
+                submitBtn.className = 'bg-slate-300 text-white px-10 py-3 rounded-xl font-bold shadow transition cursor-not-allowed';
+            }
+        }
+
+        function validateBeforeSubmit(lines) {
+            if (lines.length < 2) {
+                alert('傳票至少需要兩筆分錄明細');
+                return false;
+            }
+
+            for (const [index, line] of lines.entries()) {
+                const debit = moneyValue(line.debit_amount);
+                const credit = moneyValue(line.credit_amount);
+                if (!line.account_code || !line.account_name) {
+                    alert(`第 ${index + 1} 筆明細必須輸入科目代號與科目名稱`);
+                    return false;
+                }
+                if (debit < 0 || credit < 0) {
+                    alert(`第 ${index + 1} 筆明細金額不可為負數`);
+                    return false;
+                }
+                if (debit > 0 && credit > 0) {
+                    alert(`第 ${index + 1} 筆明細不可同時有借方與貸方`);
+                    return false;
+                }
+                if (debit === 0 && credit === 0) {
+                    alert(`第 ${index + 1} 筆明細借方與貸方不可同時為 0`);
+                    return false;
+                }
+            }
+
+            const totalDebit = lines.reduce((sum, line) => sum + moneyValue(line.debit_amount), 0);
+            const totalCredit = lines.reduce((sum, line) => sum + moneyValue(line.credit_amount), 0);
+            if (Math.abs(totalDebit - totalCredit) >= 0.005) {
+                alert('借貸不平衡，不可送出');
+                return false;
+            }
+
+            return true;
+        }
+
+        function resetForm() {
+            document.getElementById('journal-form').reset();
+            document.getElementById('currency').value = 'TWD';
+            document.getElementById('exchange_rate').value = '1.000000';
+            setToday();
+            document.getElementById('line-rows').innerHTML = '';
+            addLineRow(false);
+            addLineRow(false);
+            document.querySelector('#line-rows tr .account-code').focus();
+            updateTotals();
+        }
+
+        document.getElementById('journal-form').addEventListener('submit', async event => {
+            event.preventDefault();
+
+            const lines = collectLines();
+            if (!validateBeforeSubmit(lines)) return;
+
+            const payload = {
+                entry_no: document.getElementById('entry_no').value.trim(),
+                entry_date: document.getElementById('entry_date').value + 'T00:00:00',
+                description: document.getElementById('description').value.trim() || null,
+                type: document.getElementById('entry_type').value,
+                currency: document.getElementById('currency').value.trim().toUpperCase(),
+                exchange_rate: document.getElementById('exchange_rate').value,
+                note: document.getElementById('note').value.trim() || null,
+                lines
+            };
+
+            try {
+                const res = await fetch(API_JOURNAL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (res.ok) {
+                    alert('傳票已儲存');
+                    resetForm();
+                } else {
+                    alert(`儲存失敗：${JSON.stringify(result.detail)}`);
+                }
+            } catch (error) {
+                alert('連線失敗，請確認 Journal Entry API 已掛載');
+            }
+        });
+
+        window.onload = resetForm;
+    </script>
+</body>
+</html>

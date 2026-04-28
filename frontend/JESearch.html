@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>傳票查詢</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="p-8 bg-slate-50 min-h-screen">
+
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">傳票查詢</h1>
+            <p class="text-slate-500 text-sm">依日期與傳票號碼查詢日記帳傳票，並進行修改或作廢。</p>
+        </div>
+        <button onclick="fetchEntries()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition">
+            <i class="fas fa-sync mr-2"></i>重新整理
+        </button>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        <div class="bg-slate-800 px-6 py-4">
+            <h2 class="text-lg font-bold text-white">查詢條件</h2>
+        </div>
+        <div class="p-6 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">傳票號碼</label>
+                <input type="text" id="filter_entry_no" placeholder="輸入傳票號碼"
+                    class="w-full px-3 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">起始日期</label>
+                <input type="date" id="filter_start_date"
+                    class="w-full px-3 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">結束日期</label>
+                <input type="date" id="filter_end_date"
+                    class="w-full px-3 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">狀態</label>
+                <select id="filter_include_voided" class="w-full px-3 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="false">只顯示有效</option>
+                    <option value="true">包含作廢</option>
+                </select>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="applyFilters()" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-md text-sm transition shadow-sm">
+                    <i class="fas fa-filter mr-1"></i>查詢
+                </button>
+                <button onclick="resetFilters()" class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-2 px-4 rounded-md text-sm transition">
+                    清除
+                </button>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">傳票號碼</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">日期</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">類型</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">描述</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase">借方合計</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase">貸方合計</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">狀態</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="entry-table-body" class="divide-y divide-slate-200 text-sm">
+                    <tr><td colspan="8" class="px-6 py-12 text-center text-slate-400 italic">正在載入傳票...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="editor-panel" class="hidden bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex justify-between items-center border-b pb-4 mb-6">
+            <h2 class="text-xl font-bold text-slate-700 flex items-center">
+                <i class="fas fa-pen-to-square mr-3 text-indigo-500"></i>修改傳票
+            </h2>
+            <button onclick="closeEditor()" class="text-slate-400 hover:text-slate-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <form id="edit-form" class="space-y-8">
+            <input type="hidden" id="edit_id">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">傳票號碼</label>
+                    <input type="text" id="edit_entry_no" required
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">日期</label>
+                    <input type="date" id="edit_entry_date" required
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">傳票類型</label>
+                    <select id="edit_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="general">一般傳票</option>
+                        <option value="adjustment">調整傳票</option>
+                        <option value="closing">結帳傳票</option>
+                        <option value="reversing">迴轉傳票</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">幣別</label>
+                    <input type="text" id="edit_currency" required maxlength="10"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none uppercase">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">匯率</label>
+                    <input type="number" id="edit_exchange_rate" required min="0" step="0.000001"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-right font-mono">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">狀態</label>
+                    <select id="edit_status" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="true">有效</option>
+                        <option value="false">作廢</option>
+                    </select>
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">描述</label>
+                    <input type="text" id="edit_description"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">備註</label>
+                    <textarea id="edit_note" rows="2"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-700">分錄明細</h3>
+                    <button type="button" onclick="addEditLineRow()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition">
+                        <i class="fas fa-plus mr-2"></i>新增分錄
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-[1200px] w-full border-collapse">
+                        <thead class="text-slate-500 text-xs uppercase text-left">
+                            <tr>
+                                <th class="pb-2 px-2 w-28">科目代號</th>
+                                <th class="pb-2 px-2 w-40">科目名稱</th>
+                                <th class="pb-2 px-2">摘要</th>
+                                <th class="pb-2 px-2 w-32 text-right">借方</th>
+                                <th class="pb-2 px-2 w-32 text-right">貸方</th>
+                                <th class="pb-2 px-2 w-24">稅碼</th>
+                                <th class="pb-2 px-2 w-32">專案代號</th>
+                                <th class="pb-2 px-2 w-32">參考號</th>
+                                <th class="pb-2 px-2 w-14 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="edit-line-rows" class="divide-y divide-slate-200 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+                <div class="bg-white border border-slate-200 rounded-xl p-5">
+                    <div class="text-sm font-semibold text-slate-500 mb-1">借方合計</div>
+                    <div id="edit-total-debit" class="text-2xl font-bold text-indigo-600 font-mono text-right">0.00</div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl p-5">
+                    <div class="text-sm font-semibold text-slate-500 mb-1">貸方合計</div>
+                    <div id="edit-total-credit" class="text-2xl font-bold text-indigo-600 font-mono text-right">0.00</div>
+                </div>
+                <div id="edit-balance-card" class="bg-rose-50 border border-rose-200 rounded-xl p-5">
+                    <div class="text-sm font-semibold text-slate-500 mb-1">差額</div>
+                    <div id="edit-balance-diff" class="text-2xl font-bold text-rose-600 font-mono text-right">0.00</div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+                <button type="button" onclick="closeEditor()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-8 py-3 rounded-xl font-bold transition">
+                    取消
+                </button>
+                <button id="edit-submit-btn" type="submit" disabled
+                    class="bg-slate-300 text-white px-10 py-3 rounded-xl font-bold shadow transition cursor-not-allowed">
+                    <i class="fas fa-save mr-2"></i>儲存修改
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const API_JOURNAL = '/api/journal-entries/';
+        const typeLabels = {
+            general: '一般',
+            adjustment: '調整',
+            closing: '結帳',
+            reversing: '迴轉'
+        };
+
+        function moneyValue(value) {
+            const parsed = Number.parseFloat(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function formatMoney(value) {
+            return value.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function toDateInput(value) {
+            if (!value) return '';
+            return new Date(value).toISOString().slice(0, 10);
+        }
+
+        function buildQueryParams() {
+            const params = new URLSearchParams();
+            const entryNo = document.getElementById('filter_entry_no').value.trim();
+            const startDate = document.getElementById('filter_start_date').value;
+            const endDate = document.getElementById('filter_end_date').value;
+            const includeVoided = document.getElementById('filter_include_voided').value;
+
+            if (entryNo) params.append('entry_no', entryNo);
+            if (startDate) params.append('start_date', startDate + 'T00:00:00');
+            if (endDate) params.append('end_date', endDate + 'T23:59:59');
+            params.append('include_voided', includeVoided);
+            return params.toString();
+        }
+
+        async function fetchEntries() {
+            const tbody = document.getElementById('entry-table-body');
+            tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-12 text-center text-slate-400 italic">正在載入傳票...</td></tr>';
+
+            try {
+                const query = buildQueryParams();
+                const res = await fetch(`${API_JOURNAL}?${query}`);
+                const entries = await res.json();
+                tbody.innerHTML = '';
+
+                if (!entries.length) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-12 text-center text-slate-400">查無傳票資料</td></tr>';
+                    return;
+                }
+
+                entries.forEach(entry => {
+                    const statusBadge = entry.status
+                        ? '<span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold">有效</span>'
+                        : '<span class="px-2 py-1 bg-rose-100 text-rose-700 rounded text-xs font-bold">作廢</span>';
+                    const disabledDelete = entry.status ? '' : 'disabled';
+                    const deleteClass = entry.status
+                        ? 'text-rose-600 hover:text-rose-800 border-rose-200 hover:bg-rose-50'
+                        : 'text-slate-300 border-slate-200 cursor-not-allowed';
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4 font-bold text-indigo-600">${entry.entry_no}</td>
+                            <td class="px-6 py-4 text-slate-600">${toDateInput(entry.entry_date)}</td>
+                            <td class="px-6 py-4 text-slate-600">${typeLabels[entry.type] || entry.type}</td>
+                            <td class="px-6 py-4 text-slate-700">${entry.description || ''}</td>
+                            <td class="px-6 py-4 text-right font-mono text-slate-700">${formatMoney(Number(entry.total_debit))}</td>
+                            <td class="px-6 py-4 text-right font-mono text-slate-700">${formatMoney(Number(entry.total_credit))}</td>
+                            <td class="px-6 py-4">${statusBadge}</td>
+                            <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                                <button onclick="openEditor('${entry.id}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold border border-indigo-200 px-3 py-1 rounded hover:bg-indigo-50 transition">
+                                    <i class="fas fa-pen mr-1"></i>修改
+                                </button>
+                                <button onclick="voidEntry('${entry.id}', '${entry.entry_no}')" ${disabledDelete} class="${deleteClass} text-xs font-bold border px-3 py-1 rounded transition">
+                                    <i class="fas fa-trash mr-1"></i>作廢
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-12 text-center text-red-500 font-bold">傳票資料載入失敗</td></tr>';
+            }
+        }
+
+        function applyFilters() {
+            fetchEntries();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter_entry_no').value = '';
+            document.getElementById('filter_start_date').value = '';
+            document.getElementById('filter_end_date').value = '';
+            document.getElementById('filter_include_voided').value = 'false';
+            fetchEntries();
+        }
+
+        function closeEditor() {
+            document.getElementById('editor-panel').classList.add('hidden');
+        }
+
+        async function openEditor(id) {
+            try {
+                const res = await fetch(`${API_JOURNAL}${id}`);
+                const entry = await res.json();
+                if (!res.ok) {
+                    alert(`讀取傳票失敗：${JSON.stringify(entry.detail)}`);
+                    return;
+                }
+
+                document.getElementById('edit_id').value = entry.id;
+                document.getElementById('edit_entry_no').value = entry.entry_no;
+                document.getElementById('edit_entry_date').value = toDateInput(entry.entry_date);
+                document.getElementById('edit_type').value = entry.type;
+                document.getElementById('edit_currency').value = entry.currency;
+                document.getElementById('edit_exchange_rate').value = entry.exchange_rate;
+                document.getElementById('edit_status').value = String(entry.status);
+                document.getElementById('edit_description').value = entry.description || '';
+                document.getElementById('edit_note').value = entry.note || '';
+
+                const tbody = document.getElementById('edit-line-rows');
+                tbody.innerHTML = '';
+                entry.lines.forEach(line => addEditLineRow(line, false));
+                if (entry.lines.length < 2) {
+                    while (document.querySelectorAll('#edit-line-rows tr').length < 2) addEditLineRow(null, false);
+                }
+
+                updateEditTotals();
+                document.getElementById('editor-panel').classList.remove('hidden');
+                document.getElementById('editor-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (error) {
+                alert('讀取傳票失敗');
+            }
+        }
+
+        function addEditLineRow(line = null, focusFirst = true) {
+            const tbody = document.getElementById('edit-line-rows');
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-white transition-colors';
+            row.innerHTML = `
+                <td class="py-3 px-2"><input type="text" required class="account-code w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none font-mono" value="${line?.account_code || ''}"></td>
+                <td class="py-3 px-2"><input type="text" required class="account-name w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" value="${line?.account_name || ''}"></td>
+                <td class="py-3 px-2"><input type="text" class="summary w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" value="${line?.summary || ''}"></td>
+                <td class="py-3 px-2"><input type="number" min="0" step="0.01" class="debit w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none text-right font-mono" value="${line?.debit_amount || ''}"></td>
+                <td class="py-3 px-2"><input type="number" min="0" step="0.01" class="credit w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none text-right font-mono" value="${line?.credit_amount || ''}"></td>
+                <td class="py-3 px-2"><input type="text" class="tax-code w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" value="${line?.tax_code || ''}"></td>
+                <td class="py-3 px-2"><input type="text" class="project-code w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" value="${line?.project_code || ''}"></td>
+                <td class="py-3 px-2"><input type="text" class="reference-no w-full px-2 py-2 border rounded focus:ring-1 focus:ring-indigo-400 outline-none" value="${line?.reference_no || ''}"></td>
+                <td class="py-3 px-2 text-center">
+                    <button type="button" onclick="removeEditLineRow(this)" class="text-red-400 hover:text-red-600 transition">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+            bindEditRowEvents(row);
+            updateEditTotals();
+            if (focusFirst) row.querySelector('.account-code').focus();
+        }
+
+        function bindEditRowEvents(row) {
+            row.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', () => {
+                    if (input.classList.contains('debit') && moneyValue(input.value) > 0) row.querySelector('.credit').value = '';
+                    if (input.classList.contains('credit') && moneyValue(input.value) > 0) row.querySelector('.debit').value = '';
+                    updateEditTotals();
+                });
+                input.addEventListener('keydown', event => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const inputs = Array.from(row.querySelectorAll('input'));
+                        const index = inputs.indexOf(input);
+                        if (index >= 0 && index < inputs.length - 1) inputs[index + 1].focus();
+                        else addEditLineRow();
+                    }
+                });
+            });
+        }
+
+        function removeEditLineRow(button) {
+            const rows = document.querySelectorAll('#edit-line-rows tr');
+            if (rows.length <= 2) {
+                alert('傳票至少需要兩筆分錄明細');
+                return;
+            }
+            button.closest('tr').remove();
+            updateEditTotals();
+        }
+
+        function collectEditLines() {
+            return Array.from(document.querySelectorAll('#edit-line-rows tr')).map((row, index) => ({
+                line_no: index + 1,
+                account_code: row.querySelector('.account-code').value.trim(),
+                account_name: row.querySelector('.account-name').value.trim(),
+                summary: row.querySelector('.summary').value.trim() || null,
+                debit_amount: moneyValue(row.querySelector('.debit').value).toFixed(2),
+                credit_amount: moneyValue(row.querySelector('.credit').value).toFixed(2),
+                tax_code: row.querySelector('.tax-code').value.trim() || null,
+                project_code: row.querySelector('.project-code').value.trim() || null,
+                reference_no: row.querySelector('.reference-no').value.trim() || null
+            }));
+        }
+
+        function updateEditTotals() {
+            let totalDebit = 0;
+            let totalCredit = 0;
+            document.querySelectorAll('#edit-line-rows tr').forEach(row => {
+                totalDebit += moneyValue(row.querySelector('.debit').value);
+                totalCredit += moneyValue(row.querySelector('.credit').value);
+            });
+
+            const diff = totalDebit - totalCredit;
+            const balanced = Math.abs(diff) < 0.005 && totalDebit > 0 && totalCredit > 0;
+            const submitBtn = document.getElementById('edit-submit-btn');
+            const balanceCard = document.getElementById('edit-balance-card');
+
+            document.getElementById('edit-total-debit').innerText = formatMoney(totalDebit);
+            document.getElementById('edit-total-credit').innerText = formatMoney(totalCredit);
+            document.getElementById('edit-balance-diff').innerText = formatMoney(diff);
+
+            if (balanced) {
+                balanceCard.className = 'bg-emerald-50 border border-emerald-200 rounded-xl p-5';
+                submitBtn.disabled = false;
+                submitBtn.className = 'bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-bold shadow-lg transition transform hover:-translate-y-0.5';
+            } else {
+                balanceCard.className = 'bg-rose-50 border border-rose-200 rounded-xl p-5';
+                submitBtn.disabled = true;
+                submitBtn.className = 'bg-slate-300 text-white px-10 py-3 rounded-xl font-bold shadow transition cursor-not-allowed';
+            }
+        }
+
+        function validateLines(lines) {
+            if (lines.length < 2) {
+                alert('傳票至少需要兩筆分錄明細');
+                return false;
+            }
+
+            for (const [index, line] of lines.entries()) {
+                const debit = moneyValue(line.debit_amount);
+                const credit = moneyValue(line.credit_amount);
+                if (!line.account_code || !line.account_name) {
+                    alert(`第 ${index + 1} 筆明細必須輸入科目代號與科目名稱`);
+                    return false;
+                }
+                if (debit < 0 || credit < 0) {
+                    alert(`第 ${index + 1} 筆明細金額不可為負數`);
+                    return false;
+                }
+                if (debit > 0 && credit > 0) {
+                    alert(`第 ${index + 1} 筆明細不可同時有借方與貸方`);
+                    return false;
+                }
+                if (debit === 0 && credit === 0) {
+                    alert(`第 ${index + 1} 筆明細借方與貸方不可同時為 0`);
+                    return false;
+                }
+            }
+
+            const totalDebit = lines.reduce((sum, line) => sum + moneyValue(line.debit_amount), 0);
+            const totalCredit = lines.reduce((sum, line) => sum + moneyValue(line.credit_amount), 0);
+            if (Math.abs(totalDebit - totalCredit) >= 0.005) {
+                alert('借貸不平衡，不可儲存');
+                return false;
+            }
+            return true;
+        }
+
+        document.getElementById('edit-form').addEventListener('submit', async event => {
+            event.preventDefault();
+            const id = document.getElementById('edit_id').value;
+            const lines = collectEditLines();
+            if (!validateLines(lines)) return;
+
+            const payload = {
+                entry_no: document.getElementById('edit_entry_no').value.trim(),
+                entry_date: document.getElementById('edit_entry_date').value + 'T00:00:00',
+                description: document.getElementById('edit_description').value.trim() || null,
+                type: document.getElementById('edit_type').value,
+                currency: document.getElementById('edit_currency').value.trim().toUpperCase(),
+                exchange_rate: document.getElementById('edit_exchange_rate').value,
+                note: document.getElementById('edit_note').value.trim() || null,
+                status: document.getElementById('edit_status').value === 'true',
+                lines
+            };
+
+            try {
+                const res = await fetch(`${API_JOURNAL}${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    alert('傳票已更新');
+                    closeEditor();
+                    fetchEntries();
+                } else {
+                    alert(`更新失敗：${JSON.stringify(result.detail)}`);
+                }
+            } catch (error) {
+                alert('更新傳票失敗');
+            }
+        });
+
+        async function voidEntry(id, entryNo) {
+            if (!confirm(`確定要作廢傳票 ${entryNo}？`)) return;
+            try {
+                const res = await fetch(`${API_JOURNAL}${id}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (res.ok) {
+                    alert(result.message || '傳票已作廢');
+                    fetchEntries();
+                } else {
+                    alert(`作廢失敗：${JSON.stringify(result.detail)}`);
+                }
+            } catch (error) {
+                alert('作廢傳票失敗');
+            }
+        }
+
+        window.onload = fetchEntries;
+    </script>
+</body>
+</html>
